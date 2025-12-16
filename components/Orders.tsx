@@ -28,7 +28,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
   
   // Create Order State
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [items, setItems] = useState<OrderItem[]>([{ productName: '', quantity: 1, size: 'M', unitPrice: 0, imageUrl: '' }]);
+  const [items, setItems] = useState<OrderItem[]>([{ productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }]);
   
   // Date & Duration Logic
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]); 
@@ -236,7 +236,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
         
         // Reset form
         setSelectedCustomerId('');
-        setItems([{ productName: '', quantity: 1, size: 'M', unitPrice: 0, imageUrl: '' }]);
+        setItems([{ productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }]);
         setAiResult(null);
         setProductionDays(14);
         setOrderDate(new Date().toISOString().split('T')[0]);

@@ -17,9 +17,11 @@ export interface Customer {
 }
 
 export interface OrderItem {
+  productId?: string; // Format: CUSTOMERNAME_PRODUCTNAME
   productName: string;
   quantity: number;
   size: string;
+  color?: string; // Product color
   unitPrice: number;
   imageUrl?: string; // Product photo URL
 }

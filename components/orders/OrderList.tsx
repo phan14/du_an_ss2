@@ -224,6 +224,7 @@ const OrderList: React.FC<OrderListProps> = ({
                           <div className="min-w-0">
                             <div className="font-medium text-slate-800 truncate">{order.items[0]?.productName}</div>
                             <div className="text-xs text-slate-500">
+                               {order.items[0]?.color ? `Màu: ${order.items[0].color} • ` : ''}
                                {order.items.length > 1 ? `+${order.items.length - 1} loại khác` : `Size: ${order.items[0]?.size}`}
                             </div>
                             <div className="text-xs text-blue-600 font-medium mt-1">

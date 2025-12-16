@@ -118,8 +118,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, on
                          <tr>
                             <th className="px-4 py-3">STT</th>
                             <th className="px-4 py-3">Ảnh</th>
+                            <th className="px-4 py-3">Mã Sản Phẩm</th>
                             <th className="px-4 py-3">Tên Sản Phẩm</th>
                             <th className="px-4 py-3">Size</th>
+                            <th className="px-4 py-3">Màu Sắc</th>
                             <th className="px-4 py-3 text-right">Số Lượng</th>
                             <th className="px-4 py-3 text-right">Đơn Giá</th>
                             <th className="px-4 py-3 text-right">Thành Tiền</th>
@@ -136,8 +138,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, on
                                      <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-xs text-slate-400">No img</div>
                                   )}
                                </td>
+                               <td className="px-4 py-3 font-bold text-blue-600 text-xs">{item.productId || '-'}</td>
                                <td className="px-4 py-3 font-medium text-slate-800">{item.productName}</td>
                                <td className="px-4 py-3 text-slate-600">{item.size}</td>
+                               <td className="px-4 py-3 text-slate-600">{item.color || '-'}</td>
                                <td className="px-4 py-3 text-right font-medium">{formatNumber(item.quantity)}</td>
                                <td className="px-4 py-3 text-right text-slate-500">{formatNumber(item.unitPrice)}</td>
                                <td className="px-4 py-3 text-right font-bold text-slate-800">{formatNumber(item.quantity * item.unitPrice)}</td>

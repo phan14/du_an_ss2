@@ -64,11 +64,33 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
   const updateItem = (index: number, field: keyof OrderItem, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
+    
+    // Auto-generate productId when productName is updated
+    if (field === 'productName' && value) {
+      const customer = customers.find(c => c.id === selectedCustomerId);
+      const customerName = customer?.name || 'KHACH';
+      const productName = String(value);
+      const productId = `${customerName.toUpperCase().replace(/\s+/g, '_')}_${productName.toUpperCase().replace(/\s+/g, '_')}`;
+      newItems[index].productId = productId;
+    }
+    
     setItems(newItems);
   };
 
   const addItem = () => {
-    setItems([...items, { productName: '', quantity: 1, size: 'M', unitPrice: 0, imageUrl: '' }]);
+    // Generate productId from customer name + product name (initially empty, will be updated when product name is entered)
+    const customer = customers.find(c => c.id === selectedCustomerId);
+    const customerName = customer?.name || 'KHACH';
+    const newItem: OrderItem = {
+      productId: '',
+      productName: '',
+      quantity: 0,
+      size: '',
+      color: '',
+      unitPrice: 0,
+      imageUrl: ''
+    };
+    setItems([...items, newItem]);
   };
 
   const removeItem = (index: number) => {
@@ -183,76 +205,93 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
             </div>
             
             {items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-3 mb-4 items-start pb-4 border-b border-slate-50 last:border-0">
-                <div className="col-span-5">
-                  <label className="text-xs text-slate-500">Tên Sản Phẩm</label>
-                  <input 
-                    type="text" 
-                    placeholder="VD: Áo sơ mi nam"
-                    className="w-full p-2 border border-slate-300 rounded mb-2"
-                    value={item.productName}
-                    onChange={(e) => updateItem(idx, 'productName', e.target.value)}
-                    required
-                  />
-                  
-                  <label className="text-xs text-slate-500 block mb-1">Ảnh Mô Tả</label>
-                  <div className="flex gap-2 items-center">
+              <div key={idx} className="mb-4 pb-4 border-b border-slate-50 last:border-0 space-y-3">
+                {/* Row 1: Product Name and Image */}
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-8">
+                    <label className="text-xs text-slate-500 font-medium">Tên Sản Phẩm</label>
+                    <input 
+                      type="text" 
+                      placeholder="VD: Áo sơ mi nam"
+                      className="w-full p-2 border border-slate-300 rounded"
+                      value={item.productName}
+                      onChange={(e) => updateItem(idx, 'productName', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <label className="text-xs text-slate-500 font-medium block mb-1">Ảnh Mô Tả</label>
+                    <div className="flex gap-2 items-center">
                       <input 
                         type="text" 
-                        placeholder="URL hoặc chọn ảnh..."
+                        placeholder="URL ảnh..."
                         className="flex-1 p-2 border border-slate-300 rounded text-xs"
                         value={item.imageUrl || ''}
                         onChange={(e) => updateItem(idx, 'imageUrl', e.target.value)}
                       />
-                        <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 p-2 rounded border border-slate-300 shrink-0" title="Chọn ảnh từ máy">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="hidden" 
-                              onChange={(e) => handleFileUpload(idx, e)}
-                          />
+                      <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 p-2 rounded border border-slate-300 shrink-0 transition" title="Chọn ảnh từ máy">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(idx, e)}
+                        />
                       </label>
-                  </div>
+                    </div>
                     {item.imageUrl && (
                       <div className="mt-2 relative w-16 h-16 border rounded overflow-hidden group">
-                          <img src={item.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                          <button 
-                              type="button"
-                              onClick={() => updateItem(idx, 'imageUrl', '')}
-                              className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                          >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                          </button>
+                        <img src={item.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <button 
+                          type="button"
+                          onClick={() => updateItem(idx, 'imageUrl', '')}
+                          className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
                       </div>
                     )}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-slate-500">Size</label>
-                  <input 
-                    type="text" 
-                    className="w-full p-2 border border-slate-300 rounded"
-                    value={item.size}
-                    onChange={(e) => updateItem(idx, 'size', e.target.value)}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-slate-500">SL</label>
-                  <input 
-                    type="text"
-                    className="w-full p-2 border border-slate-300 rounded font-medium"
-                    value={item.quantity === 0 ? '' : formatNumber(item.quantity)}
-                    onChange={(e) => updateItem(idx, 'quantity', parseNumberInput(e.target.value))}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="col-span-3 flex gap-2 items-start">
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500">Đơn Giá</label>
+
+                {/* Row 2: Size, Color, Quantity, Price, Delete */}
+                <div className="grid grid-cols-12 gap-3 items-end">
+                  <div className="col-span-2">
+                    <label className="text-xs text-slate-500 font-medium">Size</label>
+                    <input 
+                      type="text" 
+                      placeholder="M, L, XL..."
+                      className="w-full p-2 border border-slate-300 rounded"
+                      value={item.size}
+                      onChange={(e) => updateItem(idx, 'size', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-slate-500 font-medium">Màu Sắc</label>
+                    <input 
+                      type="text" 
+                      placeholder="Đen, Đỏ..."
+                      className="w-full p-2 border border-slate-300 rounded"
+                      value={item.color || ''}
+                      onChange={(e) => updateItem(idx, 'color', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-slate-500 font-medium">SL</label>
+                    <input 
+                      type="text"
+                      className="w-full p-2 border border-slate-300 rounded font-medium text-center"
+                      value={item.quantity === 0 ? '' : item.quantity}
+                      onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <label className="text-xs text-slate-500 font-medium">Đơn Giá (VNĐ)</label>
                     <input 
                       type="text"
                       className="w-full p-2 border border-slate-300 rounded font-medium"
@@ -264,11 +303,12 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
                   <button 
                     type="button" 
                     onClick={() => removeItem(idx)}
-                    className="text-red-500 hover:bg-red-50 p-2 rounded mt-5"
+                    className="col-span-2 text-red-500 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Xóa sản phẩm"
                     disabled={items.length === 1}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                   </button>
                 </div>
