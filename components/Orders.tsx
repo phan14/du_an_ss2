@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Customer, Order, OrderItem, OrderStatus, ViewState, User } from '../types';
 import { saveOrder, deleteOrder, saveCustomer, saveCustomersBulk, saveOrdersBulk } from '../services/storageService';
 import { analyzeOrderRequirements, generateOrderEmail } from '../services/geminiService';
@@ -60,8 +60,11 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [alertedOrderIds, setAlertedOrderIds] = useState(new Set<string>());
-  const [threeDayAlertedOrderIds, setThreeDayAlertedOrderIds] = useState(new Set<string>());
+
+  // Refs to track alerts (prevent duplicate notifications)
+  const alertedOrderIdsRef = useRef(new Set<string>());
+  const threeDayAlertedOrderIdsRef = useRef(new Set<string>());
+  const isCheckingAlertsRef = useRef(false);
 
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
   const formatDate = (dateStr: string) => {
@@ -114,6 +117,10 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
 
   // Auto-check for order deadline alerts (3-day and urgent)
   useEffect(() => {
+    // Prevent concurrent execution
+    if (isCheckingAlertsRef.current) return;
+    isCheckingAlertsRef.current = true;
+
     const checkOrderAlerts = async () => {
       const teleConfig = getTelegramConfig();
 
@@ -121,7 +128,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
       const threeDayOrders = orders.filter(order => {
         const daysLeft = getDaysRemaining(order.deadline);
         const isNotCompleted = order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
-        return daysLeft >= 3 && daysLeft < 4 && isNotCompleted && !threeDayAlertedOrderIds.has(order.id);
+        return daysLeft >= 3 && daysLeft < 4 && isNotCompleted && !threeDayAlertedOrderIdsRef.current.has(order.id);
       });
 
       if (threeDayOrders.length > 0) {
@@ -150,16 +157,15 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           await sendTelegramMessage(message);
         }
 
-        const newAlertedIds = new Set(threeDayAlertedOrderIds);
-        threeDayOrders.forEach(o => newAlertedIds.add(o.id));
-        setThreeDayAlertedOrderIds(newAlertedIds);
+        // Mark orders as alerted using ref to prevent duplicate notifications
+        threeDayOrders.forEach(o => threeDayAlertedOrderIdsRef.current.add(o.id));
       }
 
       // Check for urgent alerts (less than 3 days)
       const urgentOrders = orders.filter(order => {
         const daysLeft = getDaysRemaining(order.deadline);
         const isNotCompleted = order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
-        return daysLeft < 3 && isNotCompleted && !alertedOrderIds.has(order.id);
+        return daysLeft < 3 && isNotCompleted && !alertedOrderIdsRef.current.has(order.id);
       });
 
       if (urgentOrders.length > 0) {
@@ -190,11 +196,11 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           await sendTelegramMessage(message);
         }
 
-        // Mark orders as alerted so we don't spam on every re-render
-        const newAlertedIds = new Set(alertedOrderIds);
-        urgentOrders.forEach(order => newAlertedIds.add(order.id));
-        setAlertedOrderIds(newAlertedIds);
+        // Mark orders as alerted using ref to prevent duplicate notifications
+        urgentOrders.forEach(order => alertedOrderIdsRef.current.add(order.id));
       }
+
+      isCheckingAlertsRef.current = false;
     };
 
     if (view === 'LIST' && orders.length > 0) {
