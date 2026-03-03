@@ -22,12 +22,14 @@ const OrderUpdateModal: React.FC<OrderUpdateModalProps> = ({
   const [newPayment, setNewPayment] = useState(0);
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(0);
 
   useEffect(() => {
     if (editingOrder) {
       setStatus(editingOrder.status);
       setReason(editingOrder.statusReason || '');
       setHistory(editingOrder.deliveryHistory || []);
+      setDepositAmount(editingOrder.depositAmount || 0);
     }
   }, [editingOrder]);
 
@@ -40,9 +42,8 @@ const OrderUpdateModal: React.FC<OrderUpdateModalProps> = ({
   const totalOrdered = getTotalQuantity(editingOrder.items);
   const totalDelivered = history.reduce((sum, rec) => sum + rec.quantity, 0);
   const totalPaidInDeliveries = history.reduce((sum, rec) => sum + (rec.paymentReceived || 0), 0);
-  const deposit = editingOrder.depositAmount || 0;
   
-  const totalPaid = deposit + totalPaidInDeliveries;
+  const totalPaid = depositAmount + totalPaidInDeliveries;
   const remaining = editingOrder.totalAmount - totalPaid;
 
   const handleAddDelivery = () => {
@@ -104,7 +105,8 @@ const OrderUpdateModal: React.FC<OrderUpdateModalProps> = ({
                 status: status,
                 actualDeliveryQuantity: finalDeliveredQty,
                 deliveryHistory: history,
-                statusReason: reason
+                statusReason: reason,
+                depositAmount: depositAmount
             };
             
             await saveOrder(updatedOrder);
@@ -157,7 +159,15 @@ const OrderUpdateModal: React.FC<OrderUpdateModalProps> = ({
                     <div className="text-lg font-bold text-emerald-600">
                         {totalPaid.toLocaleString('vi-VN')} đ
                     </div>
-                    <div className="text-xs text-slate-400">(Cọc: {deposit.toLocaleString('vi-VN')} đ)</div>
+                    <div className="text-xs text-slate-400 mt-2">
+                        <input 
+                            type="text" 
+                            placeholder="Cọc (đ)"
+                            className="w-full p-1 border border-slate-300 rounded text-xs text-emerald-600 font-semibold"
+                            value={depositAmount === 0 ? '' : depositAmount.toLocaleString('vi-VN')}
+                            onChange={(e) => setDepositAmount(parseInt(e.target.value.replace(/\D/g,'')) || 0)}
+                        />
+                    </div>
                 </div>
                 <div>
                     <div className="text-xs text-slate-500 uppercase font-semibold">Còn Lại</div>

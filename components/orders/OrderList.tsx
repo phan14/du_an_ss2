@@ -41,6 +41,7 @@ const OrderList: React.FC<OrderListProps> = ({
   const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'quantity' | 'status'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterCategory, setFilterCategory] = useState<string>('');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
 
   // Extract unique categories from all orders
   const categories = Array.from(new Set(
@@ -142,6 +143,38 @@ const OrderList: React.FC<OrderListProps> = ({
     );
   };
 
+  const handleSelectOrder = (orderId: string) => {
+    const newSelected = new Set(selectedOrderIds);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrderIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrderIds.size === currentOrders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(currentOrders.map(order => order.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedOrderIds.size === 0) {
+      alert('Vui lòng chọn ít nhất một đơn hàng để xóa!');
+      return;
+    }
+    
+    if (window.confirm(`Bạn chắc chắn muốn xóa ${selectedOrderIds.size} đơn hàng? Hành động này không thể hoàn tác!`)) {
+      selectedOrderIds.forEach(orderId => {
+        onDeleteOrder(orderId);
+      });
+      setSelectedOrderIds(new Set());
+    }
+  };
+
   return (
     <>
       {/* Filter Bar */}
@@ -189,15 +222,28 @@ const OrderList: React.FC<OrderListProps> = ({
           </div>
 
           {/* Export Button */}
-          <button
-            onClick={() => onExportExcel(sortedOrders)}
-            className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-emerald-200 w-full md:w-auto"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-            <span className="md:inline">Xuất Excel</span>
-          </button>
+          <div className="flex gap-2 w-full md:w-auto">
+            <button
+              onClick={() => onExportExcel(sortedOrders)}
+              className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-emerald-200 w-full md:w-auto"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              <span className="md:inline">Xuất Excel</span>
+            </button>
+            {selectedOrderIds.size > 0 && currentUser.role === 'ADMIN' && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center justify-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-red-200 w-full md:w-auto"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>Xóa {selectedOrderIds.size}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -238,6 +284,15 @@ const OrderList: React.FC<OrderListProps> = ({
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-slate-800 font-semibold uppercase text-xs">
               <tr>
+                <th className="px-4 py-4 w-12">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 cursor-pointer"
+                    checked={selectedOrderIds.size === currentOrders.length && currentOrders.length > 0}
+                    onChange={handleSelectAll}
+                    title="Chọn/bỏ chọn tất cả"
+                  />
+                </th>
                 <th className="px-4 py-4 w-20">Mã Đơn</th>
                 <th className="px-4 py-4 w-28">Ngày Đặt</th>
                 <th className="px-4 py-4">Ảnh / Sản Phẩm</th>
@@ -252,7 +307,7 @@ const OrderList: React.FC<OrderListProps> = ({
             <tbody className="divide-y divide-slate-100">
               {currentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={10} className="px-6 py-8 text-center text-slate-400">
                     {orders.length === 0 ? "Chưa có đơn hàng nào." : "Không tìm thấy đơn hàng phù hợp."}
                   </td>
                 </tr>
@@ -262,9 +317,18 @@ const OrderList: React.FC<OrderListProps> = ({
                 const daysLeft = getDaysRemaining(order.deadline);
                 const isUrgent = daysLeft < 3 && order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
                 const isCompleted = order.status === OrderStatus.COMPLETED;
+                const isSelected = selectedOrderIds.has(order.id);
 
                 return (
-                  <tr key={order.id} className={`transition-colors border-b border-slate-100 ${isCompleted ? 'bg-green-100 hover:bg-green-200' : isUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-slate-50'}`}>
+                  <tr key={order.id} className={`transition-colors border-b border-slate-100 ${isSelected ? 'bg-blue-50' : isCompleted ? 'bg-green-100 hover:bg-green-200' : isUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-slate-50'}`}>
+                    <td className="px-4 py-4 align-top">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 cursor-pointer"
+                        checked={isSelected}
+                        onChange={() => handleSelectOrder(order.id)}
+                      />
+                    </td>
                     <td className="px-4 py-4 align-top">
                       <span className="font-mono font-bold text-slate-800">#{order.id}</span>
                     </td>
