@@ -19,6 +19,7 @@ export interface Customer {
 export interface OrderItem {
   productId?: string; // Format: CUSTOMERNAME_PRODUCTNAME
   productName: string;
+  category?: string; // Product category (e.g., quần, áo, giày, etc.)
   quantity: number;
   size: string;
   color?: string; // Product color

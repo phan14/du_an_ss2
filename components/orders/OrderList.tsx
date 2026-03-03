@@ -38,11 +38,19 @@ const OrderList: React.FC<OrderListProps> = ({
   currentUser
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'quantity' | 'status'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+
+  // Extract unique categories from all orders
+  const categories = Array.from(new Set(
+    orders.flatMap(order => order.items.map(item => item.category).filter(Boolean))
+  )).sort() as string[];
 
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, filterCategory, sortBy, sortOrder]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -76,13 +84,32 @@ const OrderList: React.FC<OrderListProps> = ({
 
     const matchesStatus = filterStatus === 'ALL' || order.status === filterStatus;
 
-    return matchesSearch && matchesStatus;
+    const matchesCategory = !filterCategory || order.items.some(item => item.category === filterCategory);
+
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  // Sort Logic
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    let comparison = 0;
+
+    if (sortBy === 'createdAt') {
+      comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    } else if (sortBy === 'deadline') {
+      comparison = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    } else if (sortBy === 'quantity') {
+      comparison = getTotalQuantity(a.items) - getTotalQuantity(b.items);
+    } else if (sortBy === 'status') {
+      comparison = a.status.localeCompare(b.status);
+    }
+
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   // Pagination Logic
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedOrders.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentOrders = filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const currentOrders = sortedOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // Generate page numbers
   const getPageNumbers = () => {
@@ -118,46 +145,90 @@ const OrderList: React.FC<OrderListProps> = ({
   return (
     <>
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 justify-between">
-        <div className="flex-1 flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4 flex-1">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Tìm mã đơn / tên khách..."
+                className="pl-10 w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Tìm mã đơn / tên khách..."
-              className="pl-10 w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="w-full md:w-56">
+              <select
+                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as OrderStatus | 'ALL')}
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                {Object.values(OrderStatus).map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full md:w-56">
+              <select
+                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">Tất cả loại sản phẩm</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="w-full md:w-56">
+
+          {/* Export Button */}
+          <button
+            onClick={() => onExportExcel(sortedOrders)}
+            className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-emerald-200 w-full md:w-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            <span className="md:inline">Xuất Excel</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sort Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 mt-4">
+        <div className="flex gap-4 flex-1">
+          <div className="w-full md:w-48">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Sắp xếp theo</label>
             <select
               className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as OrderStatus | 'ALL')}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'createdAt' | 'deadline' | 'quantity' | 'status')}
             >
-              <option value="ALL">Tất cả trạng thái</option>
-              {Object.values(OrderStatus).map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
+              <option value="createdAt">Ngày Đặt</option>
+              <option value="deadline">Hạn Giao</option>
+              <option value="quantity">Số Lượng</option>
+              <option value="status">Trạng Thái</option>
+            </select>
+          </div>
+          <div className="w-full md:w-40">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Thứ tự</label>
+            <select
+              className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            >
+              <option value="desc">Mới nhất trước</option>
+              <option value="asc">Cũ nhất trước</option>
             </select>
           </div>
         </div>
-
-        {/* Export Button */}
-        <button
-          onClick={() => onExportExcel(filteredOrders)}
-          className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-emerald-200"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-          <span className="md:inline">Xuất Excel</span>
-        </button>
       </div>
 
       <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm md:border md:border-slate-100 flex flex-col overflow-hidden">
@@ -172,6 +243,7 @@ const OrderList: React.FC<OrderListProps> = ({
                 <th className="px-4 py-4">Ảnh / Sản Phẩm</th>
                 <th className="px-4 py-4">Khách Hàng</th>
                 <th className="px-4 py-4">Tài Chính</th>
+                <th className="px-4 py-4">SL Đặt Ban Đầu</th>
                 <th className="px-4 py-4">Tiến Độ / Trạng Thái</th>
                 <th className="px-4 py-4">Hạn Giao / Cảnh Báo</th>
                 <th className="px-4 py-4 text-right">Thao Tác</th>
@@ -180,7 +252,7 @@ const OrderList: React.FC<OrderListProps> = ({
             <tbody className="divide-y divide-slate-100">
               {currentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={9} className="px-6 py-8 text-center text-slate-400">
                     {orders.length === 0 ? "Chưa có đơn hàng nào." : "Không tìm thấy đơn hàng phù hợp."}
                   </td>
                 </tr>
@@ -189,9 +261,10 @@ const OrderList: React.FC<OrderListProps> = ({
                 const totalQty = getTotalQuantity(order.items);
                 const daysLeft = getDaysRemaining(order.deadline);
                 const isUrgent = daysLeft < 3 && order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
+                const isCompleted = order.status === OrderStatus.COMPLETED;
 
                 return (
-                  <tr key={order.id} className={`transition-colors border-b border-slate-100 ${isUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-slate-50'}`}>
+                  <tr key={order.id} className={`transition-colors border-b border-slate-100 ${isCompleted ? 'bg-green-100 hover:bg-green-200' : isUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-slate-50'}`}>
                     <td className="px-4 py-4 align-top">
                       <span className="font-mono font-bold text-slate-800">#{order.id}</span>
                     </td>
@@ -246,6 +319,12 @@ const OrderList: React.FC<OrderListProps> = ({
                       ) : (
                         <div className="text-xs text-slate-400 mt-1 italic">Chưa cọc</div>
                       )}
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <div className="bg-blue-50 px-3 py-1.5 rounded border border-blue-200 inline-block">
+                        <div className="text-xs text-slate-500">Đặt ban đầu:</div>
+                        <div className="font-bold text-blue-600 text-base">{formatNumber(totalQty)}</div>
+                      </div>
                     </td>
                     <td className="px-4 py-4 align-top">
                       {getStatusBadge(order.status)}
@@ -348,9 +427,10 @@ const OrderList: React.FC<OrderListProps> = ({
             const totalQty = getTotalQuantity(order.items);
             const daysLeft = getDaysRemaining(order.deadline);
             const isUrgent = daysLeft < 3 && order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
+            const isCompleted = order.status === OrderStatus.COMPLETED;
 
             return (
-              <div key={order.id} className={`bg-white p-4 rounded-xl shadow-sm border ${isUrgent ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-100'}`}>
+              <div key={order.id} className={`bg-white p-4 rounded-xl shadow-sm border ${isCompleted ? 'border-green-400 ring-1 ring-green-200' : isUrgent ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-100'}`}>
                 {/* Card Header */}
                 <div className="flex justify-between items-start mb-3 border-b border-slate-50 pb-2">
                   <div>

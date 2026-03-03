@@ -1,4 +1,5 @@
 import React from 'react';
+import { saveTelegramConfig } from '../../services/telegramService';
 
 interface TelegramConfigModalProps {
   teleConfig: { botToken: string; chatId: string };
@@ -13,6 +14,20 @@ const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
   onSave,
   onClose
 }) => {
+  // Check if config is from .env
+  const envBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+  const envChatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+  const isFromEnv = (teleConfig.botToken === envBotToken && teleConfig.chatId === envChatId);
+
+  const handleBotTokenChange = (value: string) => {
+    setTeleConfig({...teleConfig, botToken: value});
+    saveTelegramConfig(value, teleConfig.chatId);
+  };
+
+  const handleChatIdChange = (value: string) => {
+    setTeleConfig({...teleConfig, chatId: value});
+    saveTelegramConfig(teleConfig.botToken, value);
+  };
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
@@ -31,6 +46,11 @@ const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
           </div>
           
           <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-700">
+                {isFromEnv ? '✅ Đang sử dụng cấu hình từ .env.local' : '📝 Cấu hình từ localStorage (custom)'}
+              </p>
+            </div>
             <p className="text-sm text-slate-600">Nhập thông tin Bot Telegram để nhận cảnh báo đơn hàng gấp.</p>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Bot Token</label>
@@ -39,7 +59,7 @@ const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
                 className="w-full p-2 border border-slate-300 rounded-lg text-sm"
                 placeholder="123456789:ABCdef..."
                 value={teleConfig.botToken}
-                onChange={(e) => setTeleConfig({...teleConfig, botToken: e.target.value})}
+                onChange={(e) => handleBotTokenChange(e.target.value)}
               />
             </div>
             <div>
@@ -49,7 +69,7 @@ const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
                 className="w-full p-2 border border-slate-300 rounded-lg text-sm"
                 placeholder="-100xxxxxxx"
                 value={teleConfig.chatId}
-                onChange={(e) => setTeleConfig({...teleConfig, chatId: e.target.value})}
+                onChange={(e) => handleChatIdChange(e.target.value)}
               />
               <p className="text-xs text-slate-400 mt-1">Thêm bot vào nhóm và lấy Chat ID.</p>
             </div>
@@ -58,10 +78,10 @@ const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
           <div className="mt-6 flex justify-end gap-3">
             <button 
               type="button"
-              onClick={onSave}
+              onClick={() => {onSave(); onClose();}}
               className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 w-full font-medium"
             >
-              Lưu Cấu Hình
+              ✓ Đóng (Đã lưu tự động)
             </button>
           </div>
        </div>

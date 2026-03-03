@@ -5,7 +5,17 @@ interface TelegramConfig {
   chatId: string;
 }
 
+// Get config from .env first, then fallback to localStorage
 export const getTelegramConfig = (): TelegramConfig | null => {
+  // Priority 1: .env.local
+  const envBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+  const envChatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+  
+  if (envBotToken && envChatId) {
+    return { botToken: envBotToken, chatId: envChatId };
+  }
+  
+  // Priority 2: localStorage (user override)
   const data = localStorage.getItem(TELEGRAM_CONFIG_KEY);
   return data ? JSON.parse(data) : null;
 };

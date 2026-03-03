@@ -50,16 +50,31 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
 
   // Telegram State
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [teleConfig, setTeleConfig] = useState({
-    botToken: getTelegramConfig()?.botToken || '',
-    chatId: getTelegramConfig()?.chatId || ''
+  const [teleConfig, setTeleConfig] = useState(() => {
+    const saved = getTelegramConfig();
+    return {
+      botToken: saved?.botToken || '',
+      chatId: saved?.chatId || ''
+    };
   });
+
+  // Auto-load telegram config from .env or localStorage on mount
+  useEffect(() => {
+    const savedConfig = getTelegramConfig();
+    if (savedConfig) {
+      setTeleConfig({
+        botToken: savedConfig.botToken,
+        chatId: savedConfig.chatId
+      });
+    }
+  }, []);
 
   // Filter & UI State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showCompletedOrders, setShowCompletedOrders] = useState(false);
 
   // Refs to track alerts (prevent duplicate notifications)
   const alertedOrderIdsRef = useRef(new Set<string>());
@@ -445,22 +460,63 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
         </div>
       </div>
 
-      <OrderList
-        orders={orders}
-        customers={customers}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filterStatus={filterStatus}
-        setFilterStatus={setFilterStatus}
-        onZoomImage={setZoomedImage}
-        onReportTelegram={handleReportToTelegram}
-        onOpenUpdateModal={openUpdateModal}
-        onGenerateEmail={handleGenerateEmail}
-        onDeleteOrder={handleDeleteOrder}
-        onExportExcel={handleExport}
-        onViewDetail={setViewingOrder}
-        currentUser={currentUser}
-      />
+      {/* Active Orders Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 Đơn Hàng Đang Xử Lý</h3>
+        <OrderList
+          orders={orders.filter(o => o.status !== OrderStatus.COMPLETED)}
+          customers={customers}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterStatus={filterStatus === 'ALL' ? 'ALL' : (filterStatus === OrderStatus.COMPLETED ? 'ALL' : filterStatus)}
+          setFilterStatus={setFilterStatus}
+          onZoomImage={setZoomedImage}
+          onReportTelegram={handleReportToTelegram}
+          onOpenUpdateModal={openUpdateModal}
+          onGenerateEmail={handleGenerateEmail}
+          onDeleteOrder={handleDeleteOrder}
+          onExportExcel={handleExport}
+          onViewDetail={setViewingOrder}
+          currentUser={currentUser}
+        />
+      </div>
+
+      {/* Completed Orders Section */}
+      <div className="pt-8">
+        <div className="flex items-center gap-3 cursor-pointer mb-4" onClick={() => setShowCompletedOrders(!showCompletedOrders)}>
+          <h3 className="text-lg font-semibold text-slate-800">✅ Đơn Hàng Đã Hoàn Thành</h3>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+            {orders.filter(o => o.status === OrderStatus.COMPLETED).length}
+          </span>
+          <svg 
+            className={`w-5 h-5 text-slate-600 transition-transform ${showCompletedOrders ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </div>
+
+        {showCompletedOrders && (
+          <OrderList
+            orders={orders.filter(o => o.status === OrderStatus.COMPLETED)}
+            customers={customers}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterStatus={OrderStatus.COMPLETED}
+            setFilterStatus={() => {}}
+            onZoomImage={setZoomedImage}
+            onReportTelegram={handleReportToTelegram}
+            onOpenUpdateModal={openUpdateModal}
+            onGenerateEmail={handleGenerateEmail}
+            onDeleteOrder={handleDeleteOrder}
+            onExportExcel={handleExport}
+            onViewDetail={setViewingOrder}
+            currentUser={currentUser}
+          />
+        )}
+      </div>
 
       <OrderUpdateModal
         editingOrder={editingOrder}

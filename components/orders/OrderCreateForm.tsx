@@ -46,6 +46,8 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
   isAnalyzing,
   onAnalyze
 }) => {
+  const productCategories = ['Áo', 'Quần', 'Giày', 'Túi', 'Mũ', 'Thắt lưng', 'Phụ kiện', 'Khác'];
+  
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
   // Helper to display DD-MM-YYYY
@@ -128,12 +130,12 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <form onSubmit={onSubmit} className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Khách Hàng</label>
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Khách Hàng <span className="text-red-500">*</span></label>
               <select
                 required
-                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 value={selectedCustomerId}
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
               >
@@ -144,54 +146,54 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
               </select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ngày Đặt (Bắt đầu)</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Ngày Đặt <span className="text-red-500">*</span></label>
                 <input
                   type="date"
                   required
-                  className="w-full p-2 border border-slate-300 rounded-lg"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Thời Gian (Ngày)</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Thời Gian (Ngày)</label>
                 <input
                   type="number"
                   min="1"
-                  className="w-full p-2 border border-slate-300 rounded-lg"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   value={productionDays}
                   onChange={(e) => setProductionDays(parseInt(e.target.value) || 0)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Hạn Giao (Dự kiến)</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Hạn Giao</label>
                 <input
                   type="text"
                   readOnly
-                  className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 font-semibold"
                   value={formatDisplayDate(deadline)}
                 />
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tiền Cọc (VNĐ)</label>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Tiền Cọc (VNĐ)</label>
               <input
                 type="text"
-                className="w-full p-2 border border-slate-300 rounded-lg font-medium text-emerald-700"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
                 value={depositAmount === 0 ? '' : formatNumber(depositAmount)}
                 onChange={(e) => setDepositAmount(parseNumberInput(e.target.value))}
                 placeholder="0"
               />
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Ghi Chú Chung</label>
+            <div>
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Ghi Chú Chung</label>
               <textarea
-                className="w-full p-2 border border-slate-300 rounded-lg"
-                rows={2}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ghi chú về đơn hàng..."
@@ -199,165 +201,195 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Chi Tiết Sản Phẩm</h3>
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-slate-800">Chi Tiết Sản Phẩm</h3>
+              <button
+                type="button"
+                onClick={addItem}
+                className="text-blue-600 text-sm font-semibold hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Thêm Sản Phẩm
+              </button>
             </div>
 
-            {items.map((item, idx) => (
-              <div key={idx} className="mb-4 pb-4 border-b border-slate-50 last:border-0 space-y-3">
-                {/* Row 1: Product Name and Image */}
-                <div className="grid grid-cols-12 gap-3">
-                  <div className="col-span-8">
-                    <label className="text-xs text-slate-500 font-medium">Tên Sản Phẩm</label>
-                    <input
-                      type="text"
-                      placeholder="VD: Áo sơ mi nam"
-                      className="w-full p-2 border border-slate-300 rounded"
-                      value={item.productName}
-                      onChange={(e) => updateItem(idx, 'productName', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="col-span-4">
-                    <label className="text-xs text-slate-500 font-medium block mb-1">Ảnh Mô Tả</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        placeholder="URL ảnh..."
-                        className="flex-1 p-2 border border-slate-300 rounded text-xs"
-                        value={item.imageUrl || ''}
-                        onChange={(e) => updateItem(idx, 'imageUrl', e.target.value)}
-                      />
-                      <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 p-2 rounded border border-slate-300 shrink-0 transition" title="Chọn ảnh từ máy">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+            {items.length > 0 ? (
+              <div className="space-y-6 mb-6">
+                {items.map((item, idx) => (
+                  <div key={idx} className="pb-6 border-b border-slate-200 last:border-0">
+                    {/* Row 1: Product Name, Category */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Tên Sản Phẩm <span className="text-red-500">*</span></label>
                         <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(idx, e)}
+                          type="text"
+                          placeholder="VD: Áo sơ mi nam"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                          value={item.productName}
+                          onChange={(e) => updateItem(idx, 'productName', e.target.value)}
+                          required
                         />
-                      </label>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Loại Sản Phẩm</label>
+                        <select
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                          value={item.category || ''}
+                          onChange={(e) => updateItem(idx, 'category', e.target.value || undefined)}
+                        >
+                          <option value="">-- Chọn loại --</option>
+                          {productCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
+
+                    {/* Row 2: Size, Color, Quantity, Unit Price */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Size</label>
+                        <input
+                          type="text"
+                          placeholder="M, L, XL..."
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                          value={item.size}
+                          onChange={(e) => updateItem(idx, 'size', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Màu</label>
+                        <input
+                          type="text"
+                          placeholder="Đen, Đỏ..."
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                          value={item.color || ''}
+                          onChange={(e) => updateItem(idx, 'color', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">SL</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm text-center"
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Đơn Giá (VNĐ)</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm font-medium"
+                          value={item.unitPrice === 0 ? '' : formatNumber(item.unitPrice)}
+                          onChange={(e) => updateItem(idx, 'unitPrice', parseNumberInput(e.target.value))}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 3: Image Upload and Delete */}
+                    <div className="flex items-end gap-4">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Ảnh Mô Tả</label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Nhập URL ảnh..."
+                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                            value={item.imageUrl || ''}
+                            onChange={(e) => updateItem(idx, 'imageUrl', e.target.value)}
+                          />
+                          <label className="cursor-pointer bg-slate-200 hover:bg-slate-300 p-2 rounded-lg border border-slate-400 transition shrink-0 flex items-center justify-center h-10 w-10" title="Chọn ảnh từ máy">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(idx, e)}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition h-10 w-10 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Xóa sản phẩm"
+                            disabled={items.length === 1}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Image Preview */}
                     {item.imageUrl && (
-                      <div className="mt-2 relative w-16 h-16 border rounded overflow-hidden group">
+                      <div className="mt-3 relative w-20 h-20 border border-slate-300 rounded-lg overflow-hidden group">
                         <img src={item.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => updateItem(idx, 'imageUrl', '')}
-                          className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                          className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
                         </button>
                       </div>
                     )}
                   </div>
-                </div>
-
-                {/* Row 2: Size, Color, Quantity, Price, Delete */}
-                <div className="grid grid-cols-12 gap-3 items-end">
-                  <div className="col-span-2">
-                    <label className="text-xs text-slate-500 font-medium">Size</label>
-                    <input
-                      type="text"
-                      placeholder="M, L, XL..."
-                      className="w-full p-2 border border-slate-300 rounded"
-                      value={item.size}
-                      onChange={(e) => updateItem(idx, 'size', e.target.value)}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-slate-500 font-medium">Màu Sắc</label>
-                    <input
-                      type="text"
-                      placeholder="Đen, Đỏ..."
-                      className="w-full p-2 border border-slate-300 rounded"
-                      value={item.color || ''}
-                      onChange={(e) => updateItem(idx, 'color', e.target.value)}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-slate-500 font-medium">SL</label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border border-slate-300 rounded font-medium text-center"
-                      value={item.quantity === 0 ? '' : item.quantity}
-                      onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="col-span-4">
-                    <label className="text-xs text-slate-500 font-medium">Đơn Giá (VNĐ)</label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border border-slate-300 rounded font-medium"
-                      value={item.unitPrice === 0 ? '' : formatNumber(item.unitPrice)}
-                      onChange={(e) => updateItem(idx, 'unitPrice', parseNumberInput(e.target.value))}
-                      placeholder="0"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    className="col-span-2 text-red-500 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Xóa sản phẩm"
-                    disabled={items.length === 1}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <p className="text-sm mb-4">Chưa có sản phẩm nào</p>
+              </div>
+            )}
 
-            <button
-              type="button"
-              onClick={addItem}
-              className="text-blue-600 text-sm font-medium hover:underline flex items-center gap-1"
-            >
-              + Thêm dòng sản phẩm
-            </button>
-
-            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
-              <span className="font-semibold text-slate-700">Tổng Tiền:</span>
+            <div className="mt-6 pt-6 border-t border-slate-200 flex justify-between items-center bg-slate-50 p-4 rounded-lg">
+              <span className="font-semibold text-slate-700">Tổng Tiền Hàng:</span>
               <div className="text-right">
-                <div className="text-xl font-bold text-blue-600">{formatNumber(calculateTotal())} VNĐ</div>
+                <div className="text-2xl font-bold text-blue-600">{formatNumber(calculateTotal())}</div>
+                <div className="text-xs text-slate-500">VNĐ</div>
                 {depositAmount > 0 && (
-                  <div className="text-xs text-green-600 font-medium">Đã cọc: {formatNumber(depositAmount)} VNĐ</div>
+                  <div className="text-xs text-green-600 font-semibold mt-1">Đã cọc: {formatNumber(depositAmount)} VNĐ</div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-4">
+          <div className="flex justify-end gap-4 pt-4">
             <button
               type="button"
               onClick={onAnalyze}
               disabled={isAnalyzing}
-              className="px-6 py-3 bg-indigo-100 text-indigo-700 font-medium rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-indigo-100 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isAnalyzing ? (
                 <>
                   <svg className="animate-spin h-5 w-5 text-indigo-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  Gemini đang phân tích...
+                  Gemini phân tích...
                 </>
               ) : (
                 <>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
                   </svg>
-                  Dự tính Nguyên Liệu (AI)
+                  Dự tính Nguyên Liệu
                 </>
               )}
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
             >
               Tạo Đơn Hàng
             </button>

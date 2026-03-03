@@ -123,7 +123,18 @@ const App: React.FC = () => {
       case 'STAFF':
         return <Staff currentUser={currentUser} />;
       case 'SYSTEM':
-        return <System currentUser={currentUser} />;
+        return (
+          <System 
+            currentUser={currentUser}
+            orders={orders}
+            customers={customers}
+            onDataRestored={(newOrders, newCustomers) => {
+              setOrders(newOrders);
+              setCustomers(newCustomers);
+              loadData();
+            }}
+          />
+        );
       case 'STATISTICS':
         return <Statistics customers={customers} orders={orders} />;
       default:

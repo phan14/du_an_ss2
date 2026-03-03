@@ -9,6 +9,7 @@ interface StatisticsProps {
 }
 
 interface ProductStat {
+  initialQuantity: number;
   quantity: number;
   revenue: number;
   orderCount: number;
@@ -24,6 +25,7 @@ interface TimelineStats {
 
 const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
@@ -47,20 +49,28 @@ const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
       }
 
       order.items.forEach(item => {
-        const pName = item.productName.trim();
-        
-        if (!stats[timeKey][pName]) {
-          stats[timeKey][pName] = { quantity: 0, revenue: 0, orderCount: 0 };
+        // Filter by category if selected
+        if (selectedCategory && item.category !== selectedCategory) {
+          return;
         }
 
-        stats[timeKey][pName].quantity += item.quantity;
-        stats[timeKey][pName].revenue += (item.quantity * item.unitPrice);
-        stats[timeKey][pName].orderCount += 1;
+        const pName = item.productName.trim();
+        const category = item.category ? item.category.trim() : 'Không xác định';
+        const fullProductKey = `${pName} (${category})`;
+        
+        if (!stats[timeKey][fullProductKey]) {
+          stats[timeKey][fullProductKey] = { initialQuantity: 0, quantity: 0, revenue: 0, orderCount: 0 };
+        }
+
+        stats[timeKey][fullProductKey].initialQuantity += item.quantity;
+        stats[timeKey][fullProductKey].quantity += (order.actualDeliveryQuantity || 0);
+        stats[timeKey][fullProductKey].revenue += (item.quantity * item.unitPrice);
+        stats[timeKey][fullProductKey].orderCount += 1;
       });
     });
 
     return stats;
-  }, [orders, selectedCustomerId]);
+  }, [orders, selectedCustomerId, selectedCategory]);
 
   // Convert to sorted array for display
   const sortedTimeline = Object.entries(timelineData).sort((a, b) => {
@@ -69,6 +79,25 @@ const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
     if (y1 !== y2) return y2 - y1;
     return m2 - m1;
   });
+
+  // Extract unique categories from orders of selected customer
+  const categories = useMemo(() => {
+    if (!selectedCustomerId) return [];
+    
+    const customerOrders = orders.filter(o => o.customerId === selectedCustomerId);
+    const categorySet = new Set<string>();
+    
+    customerOrders.forEach(order => {
+      if (order.status === 'Đã hủy') return;
+      order.items.forEach(item => {
+        if (item.category && item.category.trim()) {
+          categorySet.add(item.category.trim());
+        }
+      });
+    });
+    
+    return Array.from(categorySet).sort();
+  }, [orders, selectedCustomerId]);
 
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
@@ -85,31 +114,54 @@ const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
         <p className="text-slate-500 text-sm">Phân tích số lượng sản phẩm đặt hàng theo tháng</p>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="w-full md:w-1/2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Chọn Khách Hàng</label>
-            <select
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(e.target.value)}
-            >
-                <option value="">-- Vui lòng chọn khách hàng --</option>
-                {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
-                ))}
-            </select>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Chọn Khách Hàng</label>
+              <select
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedCustomerId}
+                  onChange={(e) => {
+                    setSelectedCustomerId(e.target.value);
+                    setSelectedCategory('');
+                  }}
+              >
+                  <option value="">-- Vui lòng chọn khách hàng --</option>
+                  {customers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
+                  ))}
+              </select>
+          </div>
+
+          {selectedCustomerId && categories.length > 0 && (
+            <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Lọc Theo Loại Sản Phẩm</label>
+                <select
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                    <option value="">-- Tất cả loại sản phẩm --</option>
+                    {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                </select>
+            </div>
+          )}
         </div>
 
         {selectedCustomerId && (
-            <button
-                onClick={handleExport}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2 self-end"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-                Xuất Báo Cáo Excel
-            </button>
+            <div className="flex justify-end">
+                <button
+                    onClick={handleExport}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                    Xuất Báo Cáo Excel
+                </button>
+            </div>
         )}
       </div>
 
@@ -159,7 +211,8 @@ const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
                                       <tr>
                                           <th className="px-6 py-3">Tên Sản Phẩm</th>
                                           <th className="px-6 py-3 text-center">Số Đơn Hàng</th>
-                                          <th className="px-6 py-3 text-right">Tổng Số Lượng</th>
+                                          <th className="px-6 py-3 text-right">Số Lượng Đặt Ban Đầu</th>
+                                          <th className="px-6 py-3 text-right">Tổng Số Lượng Hoàn Thành</th>
                                           <th className="px-6 py-3 text-right">Tổng Giá Trị</th>
                                       </tr>
                                   </thead>
@@ -168,11 +221,21 @@ const Statistics: React.FC<StatisticsProps> = ({ customers, orders }) => {
                                           <tr key={idx} className="hover:bg-slate-50">
                                               <td className="px-6 py-3 font-medium text-slate-700">{name}</td>
                                               <td className="px-6 py-3 text-center text-slate-500">{stat.orderCount}</td>
+                                              <td className="px-6 py-3 text-right font-bold text-orange-600">{formatNumber(stat.initialQuantity)}</td>
                                               <td className="px-6 py-3 text-right font-bold text-blue-600">{formatNumber(stat.quantity)}</td>
                                               <td className="px-6 py-3 text-right text-slate-600">{formatNumber(stat.revenue)}</td>
                                           </tr>
                                       ))}
                                   </tbody>
+                                  <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-300">
+                                      <tr>
+                                          <td className="px-6 py-3 text-slate-800">Tổng Cộng</td>
+                                          <td className="px-6 py-3 text-center text-slate-600"></td>
+                                          <td className="px-6 py-3 text-right text-orange-700">{formatNumber(Object.values(products).reduce((sum, p) => sum + p.initialQuantity, 0))}</td>
+                                          <td className="px-6 py-3 text-right text-blue-700">{formatNumber(Object.values(products).reduce((sum, p) => sum + p.quantity, 0))}</td>
+                                          <td className="px-6 py-3 text-right text-emerald-700">{formatNumber(Object.values(products).reduce((sum, p) => sum + p.revenue, 0))}</td>
+                                      </tr>
+                                  </tfoot>
                               </table>
                           </div>
                       </div>
