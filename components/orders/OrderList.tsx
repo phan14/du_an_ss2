@@ -166,7 +166,7 @@ const OrderList: React.FC<OrderListProps> = ({
       alert('Vui lòng chọn ít nhất một đơn hàng để xóa!');
       return;
     }
-    
+
     if (window.confirm(`Bạn chắc chắn muốn xóa ${selectedOrderIds.size} đơn hàng? Hành động này không thể hoàn tác!`)) {
       selectedOrderIds.forEach(orderId => {
         onDeleteOrder(orderId);
@@ -285,8 +285,8 @@ const OrderList: React.FC<OrderListProps> = ({
             <thead className="bg-slate-50 text-slate-800 font-semibold uppercase text-xs">
               <tr>
                 <th className="px-4 py-4 w-12">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     className="w-4 h-4 cursor-pointer"
                     checked={selectedOrderIds.size === currentOrders.length && currentOrders.length > 0}
                     onChange={handleSelectAll}
@@ -322,8 +322,8 @@ const OrderList: React.FC<OrderListProps> = ({
                 return (
                   <tr key={order.id} className={`transition-colors border-b border-slate-100 ${isSelected ? 'bg-blue-50' : isCompleted ? 'bg-green-100 hover:bg-green-200' : isUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-slate-50'}`}>
                     <td className="px-4 py-4 align-top">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         className="w-4 h-4 cursor-pointer"
                         checked={isSelected}
                         onChange={() => handleSelectOrder(order.id)}
@@ -626,10 +626,10 @@ const OrderList: React.FC<OrderListProps> = ({
                     onClick={() => typeof p === 'number' && setCurrentPage(p)}
                     disabled={p === '...'}
                     className={`w-8 h-8 flex items-center justify-center rounded text-sm font-medium transition-colors ${p === currentPage
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : p === '...'
-                          ? 'text-slate-400 cursor-default'
-                          : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : p === '...'
+                        ? 'text-slate-400 cursor-default'
+                        : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
                       }`}
                   >
                     {p}
