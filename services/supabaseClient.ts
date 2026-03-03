@@ -12,8 +12,8 @@ if (!supabaseUrl || !supabaseKey) {
   const msg = [
     'Supabase not configured.',
     'Create a .env.local file with the following (example):',
-    'VITE_SUPABASE_URL=https://kbtyxjzhcxcmbvxxypzy.supabase.co',
-    "VITE_SUPABASE_ANON_KEY=sb_secret_ZDLWayJY3KaZS-wfFeLNNQ_yZgHUCdG",
+    'VITE_SUPABASE_URL=https://your-project.supabase.co',
+    'VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here',
     'Then restart the dev server so Vite picks up the new env vars.'
   ].join('\n');
   // Log for developers
