@@ -92,13 +92,23 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
   };
   const getTotalQuantity = (orderItems: OrderItem[]) => orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Calculate days remaining until deadline
+  // Calculate days remaining until deadline (excluding Sundays to match deadline calculation)
   const getDaysRemaining = (deadlineStr: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const deadlineDate = new Date(deadlineStr);
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let daysCount = 0;
+    let currentDate = new Date(today);
+
+    while (currentDate < deadlineDate) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      if (currentDate.getDay() !== 0) { // Loại bỏ chủ nhật
+        daysCount++;
+      }
+    }
+
+    return daysCount;
   };
 
   // Auto-calculate deadline (excluding Sundays)
@@ -488,10 +498,10 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
             {orders.filter(o => o.status === OrderStatus.COMPLETED).length}
           </span>
-          <svg 
+          <svg
             className={`w-5 h-5 text-slate-600 transition-transform ${showCompletedOrders ? 'rotate-180' : ''}`}
-            fill="none" 
-            stroke="currentColor" 
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -505,7 +515,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             filterStatus={OrderStatus.COMPLETED}
-            setFilterStatus={() => {}}
+            setFilterStatus={() => { }}
             onZoomImage={setZoomedImage}
             onReportTelegram={handleReportToTelegram}
             onOpenUpdateModal={openUpdateModal}

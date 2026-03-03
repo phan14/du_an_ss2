@@ -72,8 +72,18 @@ const OrderList: React.FC<OrderListProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const deadlineDate = new Date(deadlineStr);
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let daysCount = 0;
+    let currentDate = new Date(today);
+
+    while (currentDate < deadlineDate) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      if (currentDate.getDay() !== 0) { // Loại bỏ chủ nhật
+        daysCount++;
+      }
+    }
+
+    return daysCount;
   };
 
   // Filter Logic
