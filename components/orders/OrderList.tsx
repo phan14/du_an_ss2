@@ -300,14 +300,15 @@ const OrderList: React.FC<OrderListProps> = ({
                 <th className="px-4 py-4">Tài Chính</th>
                 <th className="px-4 py-4">SL Đặt Ban Đầu</th>
                 <th className="px-4 py-4">Tiến Độ / Trạng Thái</th>
-                <th className="px-4 py-4">Hạn Giao / Cảnh Báo</th>
+                <th className="px-4 py-4">Hạn Giao</th>
+                <th className="px-4 py-4">Còn Lại</th>
                 <th className="px-4 py-4 text-right">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {currentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={11} className="px-6 py-8 text-center text-slate-400">
                     {orders.length === 0 ? "Chưa có đơn hàng nào." : "Không tìm thấy đơn hàng phù hợp."}
                   </td>
                 </tr>
@@ -404,14 +405,25 @@ const OrderList: React.FC<OrderListProps> = ({
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="text-slate-700 font-medium">{formatDate(order.deadline)}</div>
-                      {isUrgent && (
-                        <div className="mt-2 flex flex-col items-start gap-1">
-                          <span className="flex items-center gap-1 text-red-600 text-xs font-bold bg-white px-2 py-0.5 rounded border border-red-200 shadow-sm">
-                            {daysLeft < 0 ? `Quá hạn ${Math.abs(daysLeft)} ngày` : `Gấp: Còn ${daysLeft} ngày`}
-                          </span>
+                      {order.statusReason && (
+                        <div className="mt-1 text-xs text-slate-500 italic border-l-2 border-slate-300 pl-1 max-w-[150px]">
+                          {order.statusReason}
                         </div>
                       )}
-                      <div className="mt-2 flex items-center gap-1">
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <div className="text-center">
+                        {isUrgent ? (
+                          <span className="flex items-center justify-center gap-1 text-red-600 text-sm font-bold bg-red-50 px-2 py-1.5 rounded border border-red-200 shadow-sm">
+                            {daysLeft < 0 ? `Quá hạn ${Math.abs(daysLeft)} ngày` : `Gấp: ${daysLeft} ngày`}
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-1 text-emerald-600 text-sm font-bold bg-emerald-50 px-2 py-1.5 rounded border border-emerald-200">
+                            {daysLeft} ngày
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center justify-center gap-1">
                         <button
                           onClick={() => onReportTelegram(order, daysLeft)}
                           className="text-xs bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-900 px-2 py-1 rounded border border-sky-200 flex items-center gap-1 font-medium transition-colors"
@@ -423,11 +435,6 @@ const OrderList: React.FC<OrderListProps> = ({
                           Telegram
                         </button>
                       </div>
-                      {order.statusReason && (
-                        <div className="mt-1 text-xs text-slate-500 italic border-l-2 border-slate-300 pl-1 max-w-[150px]">
-                          {order.statusReason}
-                        </div>
-                      )}
                     </td>
                     <td className="px-4 py-4 text-right align-top">
                       <div className="flex justify-end gap-1 flex-col sm:flex-row">
