@@ -79,10 +79,10 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in pb-10">
+    <div className="space-y-4 md:space-y-6 animate-fade-in pb-10 px-3 md:px-0">
 
-      {/* 1. Header Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* 1. Header Stats Grid - Stack 1 col on mobile, 2 on tablet, 4 on desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard
           title="Tổng Doanh Thu"
           value={`${Math.round(stats.revenue).toLocaleString('vi-VN')} đ`}
@@ -127,25 +127,25 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [
         />
       </div>
 
-      {/* 2. Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
-        <div className="lg:col-span-2 h-full">
+      {/* 2. Charts Row - Stack on mobile, 2-col on tablet, 3-col on desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 h-auto md:h-80 lg:h-96">
+        <div className="lg:col-span-2 h-64 md:h-80 lg:h-full">
           <RevenueChart data={stats.chartData} />
         </div>
-        <div className="h-full">
+        <div className="h-64 md:h-80 lg:h-full">
           <StatusChart data={statusData} />
         </div>
       </div>
 
-      {/* 3. Detailed Info Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 3. Detailed Info Row - Stack on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         {/* Urgent Orders List */}
-        <div className="lg:col-span-1 h-96">
+        <div className="lg:col-span-1 h-auto md:h-80 lg:h-96">
           <UrgentOrders orders={stats.urgentList} customers={customers} onNavigate={() => onNavigate('ORDERS')} />
         </div>
 
         {/* Recent Orders Table */}
-        <div className="lg:col-span-2 h-96">
+        <div className="lg:col-span-2 h-auto md:h-80 lg:h-96">
           <RecentOrdersTable
             orders={orders.slice(0, 5)}
             customers={customers}

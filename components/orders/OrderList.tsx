@@ -42,6 +42,7 @@ const OrderList: React.FC<OrderListProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [groupByCustomer, setGroupByCustomer] = useState(false);
 
   // Extract unique categories from all orders
   const categories = Array.from(new Set(
@@ -117,10 +118,34 @@ const OrderList: React.FC<OrderListProps> = ({
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
+  // Group by Customer Logic
+  const groupedByCustomer = React.useMemo(() => {
+    const groups: { [customerId: string]: Order[] } = {};
+    
+    sortedOrders.forEach(order => {
+      if (!groups[order.customerId]) {
+        groups[order.customerId] = [];
+      }
+      groups[order.customerId].push(order);
+    });
+
+    return Object.entries(groups).map(([customerId, orders]) => ({
+      customer: customers.find(c => c.id === customerId),
+      orders,
+      totalAmount: orders.reduce((sum, order) => sum + order.totalAmount, 0),
+      totalOrders: orders.length,
+      totalQuantity: orders.reduce((sum, order) => sum + getTotalQuantity(order.items), 0)
+    })).sort((a, b) => (b.customer?.name || 'Khách vãng lai').localeCompare(a.customer?.name || 'Khách vãng lai'));
+  }, [sortedOrders, customers]);
+
   // Pagination Logic
-  const totalPages = Math.ceil(sortedOrders.length / ITEMS_PER_PAGE);
+  const totalPages = groupByCustomer 
+    ? Math.ceil(groupedByCustomer.length / ITEMS_PER_PAGE)
+    : Math.ceil(sortedOrders.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentOrders = sortedOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const currentOrders = groupByCustomer
+    ? groupedByCustomer.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    : sortedOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // Generate page numbers
   const getPageNumbers = () => {
@@ -164,10 +189,13 @@ const OrderList: React.FC<OrderListProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedOrderIds.size === currentOrders.length) {
-      setSelectedOrderIds(new Set());
-    } else {
-      setSelectedOrderIds(new Set(currentOrders.map(order => order.id)));
+    if (!groupByCustomer) {
+      const pageOrders = currentOrders as Order[];
+      if (selectedOrderIds.size === pageOrders.length) {
+        setSelectedOrderIds(new Set());
+      } else {
+        setSelectedOrderIds(new Set(pageOrders.map(order => order.id)));
+      }
     }
   };
 
@@ -188,26 +216,29 @@ const OrderList: React.FC<OrderListProps> = ({
   return (
     <>
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row gap-4 flex-1">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Tìm mã đơn / tên khách..."
-                className="pl-10 w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+      <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100">
+        <div className="flex flex-col gap-3 md:gap-4">
+          {/* Search Input - Full Width on Mobile */}
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
             </div>
-            <div className="w-full md:w-56">
+            <input
+              type="text"
+              placeholder="Tìm mã đơn / tên khách..."
+              className="pl-10 w-full p-2 md:p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Filters Grid - Stack on Mobile */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+            <div className="md:col-span-1">
               <select
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full p-2 md:p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as OrderStatus | 'ALL')}
               >
@@ -217,79 +248,98 @@ const OrderList: React.FC<OrderListProps> = ({
                 ))}
               </select>
             </div>
-            <div className="w-full md:w-56">
+            <div className="md:col-span-1">
               <select
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full p-2 md:p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
               >
-                <option value="">Tất cả loại sản phẩm</option>
+                <option value="">Tất cả loại SP</option>
                 {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* Export Button */}
-          <div className="flex gap-2 w-full md:w-auto">
+            {/* Action Buttons - Stack on Mobile */}
             <button
               onClick={() => onExportExcel(sortedOrders)}
-              className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-emerald-200 w-full md:w-auto"
+              className="flex items-center justify-center gap-1 md:gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2 md:px-4 py-2 rounded-lg font-medium transition-colors border border-emerald-200 text-xs md:text-sm col-span-1"
+              title="Xuất Excel"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              <span className="md:inline">Xuất Excel</span>
+              <span className="hidden md:inline">Xuất</span>
             </button>
+
             {selectedOrderIds.size > 0 && currentUser.role === 'ADMIN' && (
               <button
                 onClick={handleBulkDelete}
-                className="flex items-center justify-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-lg font-medium transition-colors border border-red-200 w-full md:w-auto"
+                className="flex items-center justify-center gap-1 md:gap-2 bg-red-50 text-red-700 hover:bg-red-100 px-2 md:px-4 py-2 rounded-lg font-medium transition-colors border border-red-200 text-xs md:text-sm col-span-1"
+                title={`Xóa ${selectedOrderIds.size}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <span>Xóa {selectedOrderIds.size}</span>
+                <span className="hidden md:inline">Xóa</span>
               </button>
             )}
+
+            {/* Group by Customer Button */}
+            <button
+              onClick={() => {
+                setGroupByCustomer(!groupByCustomer);
+                setCurrentPage(1);
+              }}
+              className={`flex items-center justify-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-lg font-medium transition-colors border text-xs md:text-sm col-span-1 ${
+                groupByCustomer
+                  ? 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+              }`}
+              title={groupByCustomer ? "Xem danh sách bình thường" : "Nhóm theo khách hàng"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+              </svg>
+              <span className="hidden md:inline">{groupByCustomer ? 'Danh sách' : 'Nhóm'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Sort Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 mt-4">
-        <div className="flex gap-4 flex-1">
-          <div className="w-full md:w-48">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Sắp xếp theo</label>
-            <select
-              className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'createdAt' | 'deadline' | 'quantity' | 'status')}
-            >
-              <option value="createdAt">Ngày Đặt</option>
-              <option value="deadline">Hạn Giao</option>
-              <option value="quantity">Số Lượng</option>
-              <option value="status">Trạng Thái</option>
-            </select>
-          </div>
-          <div className="w-full md:w-40">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Thứ tự</label>
-            <select
-              className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-            >
-              <option value="desc">Mới nhất trước</option>
-              <option value="asc">Cũ nhất trước</option>
-            </select>
-          </div>
+      {/* Sort Bar - Hidden on Mobile, Compact on Tablet */}
+      <div className="hidden sm:flex bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 gap-3 md:gap-4 mt-4">
+        <div className="flex-1">
+          <label className="block text-xs md:text-sm font-medium text-slate-700 mb-1">Sắp xếp theo</label>
+          <select
+            className="w-full p-2 md:p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'createdAt' | 'deadline' | 'quantity' | 'status')}
+          >
+            <option value="createdAt">Ngày Đặt</option>
+            <option value="deadline">Hạn Giao</option>
+            <option value="quantity">Số Lượng</option>
+            <option value="status">Trạng Thái</option>
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs md:text-sm font-medium text-slate-700 mb-1">Thứ tự</label>
+          <select
+            className="w-full p-2 md:p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+          >
+            <option value="desc">Mới nhất trước</option>
+            <option value="asc">Cũ nhất trước</option>
+          </select>
         </div>
       </div>
 
       <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm md:border md:border-slate-100 flex flex-col overflow-hidden">
 
         {/* === DESKTOP TABLE VIEW (Hidden on Mobile) === */}
+        {!groupByCustomer && (
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-slate-800 font-semibold uppercase text-xs">
@@ -298,7 +348,7 @@ const OrderList: React.FC<OrderListProps> = ({
                   <input
                     type="checkbox"
                     className="w-4 h-4 cursor-pointer"
-                    checked={selectedOrderIds.size === currentOrders.length && currentOrders.length > 0}
+                    checked={selectedOrderIds.size === (currentOrders as Order[]).length && (currentOrders as Order[]).length > 0}
                     onChange={handleSelectAll}
                     title="Chọn/bỏ chọn tất cả"
                   />
@@ -316,13 +366,13 @@ const OrderList: React.FC<OrderListProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {currentOrders.length === 0 ? (
+              {(currentOrders as Order[]).length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-6 py-8 text-center text-slate-400">
                     {orders.length === 0 ? "Chưa có đơn hàng nào." : "Không tìm thấy đơn hàng phù hợp."}
                   </td>
                 </tr>
-              ) : currentOrders.map(order => {
+              ) : (currentOrders as Order[]).map(order => {
                 const customer = customers.find(c => c.id === order.customerId);
                 const totalQty = getTotalQuantity(order.items);
                 const daysLeft = getDaysRemaining(order.deadline);
@@ -496,14 +546,192 @@ const OrderList: React.FC<OrderListProps> = ({
             </tbody>
           </table>
         </div>
+        )}
 
-        {/* === MOBILE CARD VIEW (Shown only on Mobile) === */}
-        <div className="md:hidden space-y-4">
-          {currentOrders.length === 0 ? (
-            <div className="text-center p-8 text-slate-400 bg-white rounded-xl border border-slate-100">
-              {orders.length === 0 ? "Chưa có đơn hàng." : "Không tìm thấy đơn hàng."}
-            </div>
-          ) : currentOrders.map(order => {
+        {/* === GROUP BY CUSTOMER VIEW === */}
+        {groupByCustomer && (
+          <div className="space-y-6 p-4 md:p-0">
+            {(currentOrders as typeof groupedByCustomer).length === 0 ? (
+              <div className="text-center p-8 text-slate-400 bg-white rounded-xl border border-slate-100">
+                {groupedByCustomer.length === 0 ? "Chưa có đơn hàng." : "Không tìm thấy đơn hàng."}
+              </div>
+            ) : (currentOrders as typeof groupedByCustomer).map((group) => (
+              <div key={group.customer?.id || 'unknown'} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                {/* Customer Header */}
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200 p-4 md:p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                        </svg>
+                        {group.customer?.name || 'Khách vãng lai'}
+                      </h3>
+                      <p className="text-sm text-slate-600 mt-1">{group.customer?.phone || 'Không có số điện thoại'}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-purple-600">{group.totalOrders}</div>
+                      <div className="text-xs text-slate-600">đơn hàng</div>
+                    </div>
+                  </div>
+
+                  {/* Customer Summary Stats */}
+                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-purple-200">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{formatNumber(group.totalQuantity)}</div>
+                      <div className="text-xs text-slate-600">Tổng SL</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-600">{formatNumber(group.totalAmount)} đ</div>
+                      <div className="text-xs text-slate-600">Tổng Tiền</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {group.orders.filter(o => o.status === OrderStatus.PENDING).length}
+                      </div>
+                      <div className="text-xs text-slate-600">Chờ xử lý</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Orders Table inside Group */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-slate-800 font-semibold text-xs">
+                      <tr className="border-b border-slate-100">
+                        <th className="px-4 py-3 w-16">Mã Đơn</th>
+                        <th className="px-4 py-3 w-24">Ngày Đặt</th>
+                        <th className="px-4 py-3">Sản Phẩm</th>
+                        <th className="px-4 py-3">Tiền</th>
+                        <th className="px-4 py-3 text-center">SL</th>
+                        <th className="px-4 py-3 text-center">Tiến Độ</th>
+                        <th className="px-4 py-3 text-center">Hạn Giao</th>
+                        <th className="px-4 py-3 text-right">Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {group.orders.map(order => {
+                        const totalQty = getTotalQuantity(order.items);
+                        const daysLeft = getDaysRemaining(order.deadline);
+                        const isUrgent = daysLeft < 3 && order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED;
+                        const isCompleted = order.status === OrderStatus.COMPLETED;
+
+                        return (
+                          <tr key={order.id} className={`transition-colors ${isCompleted ? 'bg-green-50' : isUrgent ? 'bg-red-50' : 'bg-white hover:bg-slate-50'}`}>
+                            <td className="px-4 py-3">
+                              <span className="font-mono font-bold text-slate-800">#{order.id}</span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">{formatDate(order.createdAt)}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                {order.items[0]?.imageUrl && (
+                                  <img
+                                    src={order.items[0].imageUrl}
+                                    alt="Product"
+                                    className="w-8 h-8 rounded object-cover cursor-pointer"
+                                    onClick={() => onZoomImage(order.items[0].imageUrl!)}
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium text-slate-800 truncate text-xs">{order.items[0]?.productName}</div>
+                                  <div className="text-[11px] text-slate-500">
+                                    {order.items.length > 1 ? `+${order.items.length - 1} loại` : `Size: ${order.items[0]?.size}`}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-blue-600 font-medium text-sm">{formatNumber(order.totalAmount)} đ</div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-block bg-blue-50 px-2 py-1 rounded text-xs font-bold text-blue-600">
+                                {formatNumber(totalQty)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="text-xs font-medium text-slate-700 mb-1">
+                                {formatNumber(order.actualDeliveryQuantity || 0)}/{formatNumber(totalQty)}
+                              </div>
+                              <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden mx-auto">
+                                <div
+                                  className="h-full bg-blue-500"
+                                  style={{ width: `${Math.min(100, ((order.actualDeliveryQuantity || 0) / totalQty) * 100)}%` }}
+                                ></div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="text-slate-700 font-medium text-xs">{formatDate(order.deadline)}</div>
+                              <div className={`text-[10px] font-bold mt-1 ${daysLeft < 0 ? 'text-red-600' : daysLeft < 3 ? 'text-orange-600' : 'text-green-600'}`}>
+                                {daysLeft < 0 ? `Quá hạn ${Math.abs(daysLeft)}d` : `${daysLeft}d`}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  onClick={() => onViewDetail(order)}
+                                  className="p-1 text-slate-600 hover:bg-slate-100 rounded border border-transparent hover:border-slate-200"
+                                  title="Xem chi tiết"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => onOpenUpdateModal(order)}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded border border-transparent hover:border-blue-100"
+                                  title="Cập nhật tiến độ"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => onGenerateEmail(order)}
+                                  className="p-1 text-indigo-600 hover:bg-indigo-50 rounded border border-transparent hover:border-indigo-100"
+                                  title="Tạo Email AI"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                  </svg>
+                                </button>
+                                {currentUser.role === 'ADMIN' && (
+                                  <button
+                                    onClick={() => onDeleteOrder(order.id)}
+                                    className="p-1 text-red-400 hover:bg-red-50 hover:text-red-600 rounded border border-transparent hover:border-red-100"
+                                    title="Xóa"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Display normal table/card view when not grouped */}
+        {!groupByCustomer && (
+        <>
+          <div className="hidden md:block overflow-x-auto">
+            {/* Desktop will use table above, this is handled by the table wrapper */}
+          </div>
+          <div className="md:hidden space-y-4">
+            {(currentOrders as Order[]).length === 0 ? (
+              <div className="text-center p-8 text-slate-400 bg-white rounded-xl border border-slate-100">
+                {orders.length === 0 ? "Chưa có đơn hàng." : "Không tìm thấy đơn hàng."}
+              </div>
+            ) : (currentOrders as Order[]).map(order => {
             const customer = customers.find(c => c.id === order.customerId);
             const totalQty = getTotalQuantity(order.items);
             const daysLeft = getDaysRemaining(order.deadline);
@@ -523,9 +751,21 @@ const OrderList: React.FC<OrderListProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500">{formatDate(order.createdAt)}</div>
+                    <div className="text-xs text-slate-500">Đặt: {formatDate(order.createdAt)}</div>
                   </div>
                   {getStatusBadge(order.status)}
+                </div>
+
+                {/* Customer & Deadline Info */}
+                <div className="grid grid-cols-2 gap-2 mb-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                  <div>
+                    <div className="text-[9px] text-slate-600 uppercase font-semibold">Khách Hàng</div>
+                    <div className="text-xs font-medium text-slate-800 line-clamp-1">{customer?.name || 'Khách vãng lai'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] text-slate-600 uppercase font-semibold">Hạn Giao</div>
+                    <div className="text-xs font-medium text-slate-800">{formatDate(order.deadline)}</div>
+                  </div>
                 </div>
 
                 {/* Product Info */}
@@ -550,26 +790,29 @@ const OrderList: React.FC<OrderListProps> = ({
                     <div className="text-xs text-blue-600 font-medium mb-1">
                       Giá: {formatNumber(order.items[0]?.unitPrice || 0)} đ
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-slate-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      {customer?.name || 'Khách vãng lai'}
+                    <div className="text-xs text-slate-600">
+                      SL: {formatNumber(order.items[0]?.quantity || 0)}
                     </div>
                   </div>
                 </div>
 
-                {/* Finance & Progress */}
-                <div className="grid grid-cols-2 gap-3 mb-3 p-2 bg-slate-50 rounded-lg">
+                {/* Finance & Progress & Days */}
+                <div className="grid grid-cols-3 gap-2 mb-3 p-2 bg-slate-50 rounded-lg">
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase">Tiến Độ</div>
+                    <div className="text-[9px] text-slate-500 uppercase font-semibold">Tiến Độ</div>
                     <div className="text-sm font-medium text-slate-800">
                       {formatNumber(order.actualDeliveryQuantity || 0)} / {formatNumber(totalQty)}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-slate-500 uppercase">Tổng Tiền</div>
+                  <div>
+                    <div className="text-[9px] text-slate-500 uppercase font-semibold">Tổng Tiền</div>
                     <div className="text-sm font-bold text-blue-600">{formatNumber(order.totalAmount)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] text-slate-500 uppercase font-semibold">Còn Lại</div>
+                    <div className={`text-sm font-bold ${daysLeft < 0 ? 'text-red-600' : daysLeft < 3 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {daysLeft < 0 ? `Trễ ${Math.abs(daysLeft)}d` : `${daysLeft}d`}
+                    </div>
                   </div>
                 </div>
 
@@ -618,7 +861,9 @@ const OrderList: React.FC<OrderListProps> = ({
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
+        )}
 
         {/* Pagination Footer (Shared) */}
         {filteredOrders.length > 0 && (
