@@ -75,6 +75,8 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
+  const [showDraftOrders, setShowDraftOrders] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<Order | null>(null);
 
   // Refs to track alerts (prevent duplicate notifications)
   const alertedOrderIdsRef = useRef(new Set<string>());
@@ -258,7 +260,8 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
         notes,
         actualDeliveryQuantity: 0,
         statusReason: '',
-        aiAnalysis: aiResult ? `Vật liệu: ${aiResult.materialEstimate}\nLời khuyên: ${aiResult.advice}` : undefined
+        aiAnalysis: aiResult ? `Vật liệu: ${aiResult.materialEstimate}\nLời khuyên: ${aiResult.advice}` : undefined,
+        isDraft: false
       };
 
       await saveOrder(newOrder);
@@ -275,6 +278,52 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
       setDepositAmount(0);
     } catch (err) {
       alert('Có lỗi khi tạo đơn hàng');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomerId) {
+      alert("Vui lòng chọn khách hàng!");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const safeId = `${Date.now().toString(36).toUpperCase()}`;
+      const newOrder: Order = {
+        id: safeId.slice(0, 8),
+        customerId: selectedCustomerId,
+        items,
+        totalAmount: calculateTotal(),
+        depositAmount: depositAmount,
+        status: OrderStatus.PENDING,
+        deadline,
+        createdAt: new Date(orderDate).toISOString(),
+        notes,
+        actualDeliveryQuantity: 0,
+        statusReason: '',
+        aiAnalysis: aiResult ? `Vật liệu: ${aiResult.materialEstimate}\nLời khuyên: ${aiResult.advice}` : undefined,
+        isDraft: true
+      };
+
+      await saveOrder(newOrder);
+      await refreshData();
+      alert('✅ Đã lưu nháp đơn hàng thành công! Bạn có thể duyệt nó từ mục "Đơn Nháp"');
+      setView('LIST');
+
+      // Reset form
+      setSelectedCustomerId('');
+      setItems([{ productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }]);
+      setAiResult(null);
+      setProductionDays(14);
+      setOrderDate(new Date().toISOString().split('T')[0]);
+      setNotes('');
+      setDepositAmount(0);
+    } catch (err) {
+      alert('Có lỗi khi lưu nháp đơn hàng');
     } finally {
       setIsSaving(false);
     }
@@ -349,6 +398,131 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
     }
   };
 
+  const handleApproveDraft = async (draftOrder: Order) => {
+    if (currentUser.role !== 'ADMIN') {
+      alert("Bạn không có quyền duyệt đơn hàng.");
+      return;
+    }
+
+    if (window.confirm(`Duyệt đơn nháp #${draftOrder.id}? Nó sẽ chuyển sang "Chờ xử lý"`)) {
+      setIsSaving(true);
+      try {
+        const approvedOrder: Order = {
+          ...draftOrder,
+          isDraft: false
+        };
+        await saveOrder(approvedOrder);
+        await refreshData();
+        alert('✅ Đã duyệt đơn hàng thành công!');
+      } catch (err) {
+        alert('Có lỗi khi duyệt đơn hàng');
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  const handleDeleteDraft = async (id: string) => {
+    if (currentUser.role !== 'ADMIN') {
+      alert("Bạn không có quyền xóa đơn hàng.");
+      return;
+    }
+    if (window.confirm('Xóa nháp đơn này?')) {
+      await deleteOrder(id);
+      refreshData();
+    }
+  };
+
+  const handleMoveToDraft = async (order: Order) => {
+    if (currentUser.role !== 'ADMIN') {
+      alert("Bạn không có quyền chuyển đơn hàng về nháp.");
+      return;
+    }
+
+    if (window.confirm(`Chuyển đơn #${order.id} về mục nháp? Bạn có thể duyệt nó lại sau.`)) {
+      setIsSaving(true);
+      try {
+        const draftOrder: Order = {
+          ...order,
+          isDraft: true
+        };
+        await saveOrder(draftOrder);
+        await refreshData();
+        setViewingOrder(null);
+        alert('✅ Đã chuyển đơn hàng về mục nháp!');
+      } catch (err) {
+        alert('Có lỗi khi chuyển đơn hàng về nháp');
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  const handleEditDraft = (draftOrder: Order) => {
+    setEditingDraft(draftOrder);
+    setSelectedCustomerId(draftOrder.customerId);
+    setItems(draftOrder.items);
+    setNotes(draftOrder.notes);
+    setDepositAmount(draftOrder.depositAmount);
+    setDeadline(draftOrder.deadline);
+    const createdDate = new Date(draftOrder.createdAt);
+    setOrderDate(createdDate.toISOString().split('T')[0]);
+    const prodDays = Math.ceil((new Date(draftOrder.deadline).getTime() - new Date(draftOrder.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    setProductionDays(prodDays);
+  };
+
+  const handleSaveEditedDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomerId) {
+      alert("Vui lòng chọn khách hàng!");
+      return;
+    }
+
+    if (!editingDraft) return;
+
+    setIsSaving(true);
+    try {
+      const updatedOrder: Order = {
+        ...editingDraft,
+        customerId: selectedCustomerId,
+        items,
+        totalAmount: calculateTotal(),
+        depositAmount: depositAmount,
+        deadline,
+        createdAt: new Date(orderDate).toISOString(),
+        notes,
+        isDraft: true
+      };
+
+      await saveOrder(updatedOrder);
+      await refreshData();
+      alert('✅ Đã cập nhật nháp đơn hàng thành công!');
+      setEditingDraft(null);
+      setSelectedCustomerId('');
+      setItems([{ productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }]);
+      setAiResult(null);
+      setProductionDays(14);
+      setOrderDate(new Date().toISOString().split('T')[0]);
+      setNotes('');
+      setDepositAmount(0);
+    } catch (err) {
+      alert('Có lỗi khi cập nhật nháp đơn hàng');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEditDraft = () => {
+    setEditingDraft(null);
+    setSelectedCustomerId('');
+    setItems([{ productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }]);
+    setAiResult(null);
+    setProductionDays(14);
+    setOrderDate(new Date().toISOString().split('T')[0]);
+    setNotes('');
+    setDepositAmount(0);
+  };
+
   // Excel Handlers
   const handleExport = (filteredOrders: Order[]) => {
     const fileName = searchTerm ? `don_hang_${searchTerm}.xlsx` : `danh_sach_don_hang_${new Date().getFullYear()}.xlsx`;
@@ -415,6 +589,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           setItems={setItems}
           onCancel={() => setView('LIST')}
           onSubmit={handleCreateOrder}
+          onSaveDraft={handleSaveDraft}
           aiResult={aiResult}
           isAnalyzing={isAnalyzing}
           onAnalyze={handleAIAnalysis}
@@ -461,6 +636,13 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
             Cấu hình Telegram
           </button>
 
+          {/* Show Draft Count Badge if ADMIN */}
+          {currentUser.role === 'ADMIN' && orders.filter(o => o.isDraft === true).length > 0 && (
+            <span className="bg-amber-500 text-white px-2 py-1 rounded-lg font-semibold text-xs animate-pulse">
+              🗒️ {orders.filter(o => o.isDraft === true).length} nháp
+            </span>
+          )}
+
           <button
             onClick={() => setView('CREATE')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
@@ -474,7 +656,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
       <div>
         <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 Đơn Hàng Đang Xử Lý</h3>
         <OrderList
-          orders={orders.filter(o => o.status !== OrderStatus.COMPLETED)}
+          orders={orders.filter(o => o.status !== OrderStatus.COMPLETED && o.isDraft !== true)}
           customers={customers}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -490,6 +672,136 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           currentUser={currentUser}
         />
       </div>
+
+      {/* Draft Orders Section - ADMIN ONLY */}
+      {currentUser.role === 'ADMIN' && (
+        <div className="pt-8">
+          <div className="flex items-center gap-3 cursor-pointer mb-4" onClick={() => setShowDraftOrders(!showDraftOrders)}>
+            <h3 className="text-lg font-semibold text-slate-800">🗒️ Đơn Nháp (Chờ Khách Xác Nhận)</h3>
+            <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-medium">
+              {orders.filter(o => o.isDraft === true).length}
+            </span>
+            <svg
+              className={`w-5 h-5 text-slate-600 transition-transform ${showDraftOrders ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </div>
+
+          {showDraftOrders && (
+            <div className="space-y-3">
+              {orders.filter(o => o.isDraft === true).length === 0 ? (
+                <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg">
+                  <p className="text-sm">Không có đơn nháp</p>
+                </div>
+              ) : (
+                orders.filter(o => o.isDraft === true).map(draftOrder => {
+                  const customer = customers.find(c => c.id === draftOrder.customerId);
+                  const totalQty = draftOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+                  return (
+                    <div key={draftOrder.id} className="bg-white border-l-4 border-amber-500 rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                      {/* Header with Key Info */}
+                      <div className="bg-gradient-to-r from-amber-50 to-amber-100 px-6 py-4 border-b border-amber-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-slate-800 text-lg">Đơn #<span className="text-amber-600">{draftOrder.id}</span></h4>
+                            <p className="text-sm text-slate-600 mt-1">👤 <span className="font-semibold">{customer?.name || 'N/A'}</span></p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-lg text-emerald-600">{formatNumber(draftOrder.totalAmount)} đ</p>
+                            <p className="text-xs text-slate-500 mt-1">📅 {formatDate(draftOrder.deadline)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Products Table */}
+                      <div className="px-6 py-4 border-b border-slate-100">
+                        <p className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                          <span>📦 Sản Phẩm ({totalQty} cái)</span>
+                        </p>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-slate-100 border-b border-slate-200">
+                              <tr>
+                                <th className="px-4 py-2 text-center text-slate-700 font-semibold">Ảnh</th>
+                                <th className="px-4 py-2 text-left text-slate-700 font-semibold">Tên Sản Phẩm</th>
+                                <th className="px-4 py-2 text-center text-slate-700 font-semibold">SL</th>
+                                <th className="px-4 py-2 text-center text-slate-700 font-semibold">Giá</th>
+                                <th className="px-4 py-2 text-center text-slate-700 font-semibold">Kích Thước / Màu</th>
+                                <th className="px-4 py-2 text-right text-slate-700 font-semibold">Thành Tiền</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {draftOrder.items.map((item, idx) => (
+                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                  <td className="px-4 py-3 text-center">
+                                    {item.imageUrl ? (
+                                      <img src={item.imageUrl} alt={item.productName} className="w-12 h-12 object-cover rounded cursor-pointer hover:opacity-75" onClick={() => setZoomedImage(item.imageUrl)} />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-slate-200 rounded flex items-center justify-center text-xs text-slate-500">Không ảnh</div>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-800 font-medium">{item.productName}</td>
+                                  <td className="px-4 py-3 text-center text-slate-600">{item.quantity}</td>
+                                  <td className="px-4 py-3 text-center text-slate-600">{formatNumber(item.unitPrice)} đ</td>
+                                  <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                    {item.size && <span className="block">{item.size}</span>}
+                                    {item.color && <span className="block text-slate-600">{item.color}</span>}
+                                    {!item.size && !item.color && <span>-</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatNumber(item.quantity * item.unitPrice)} đ</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Notes Section */}
+                      {draftOrder.notes && (
+                        <div className="px-6 py-3 border-b border-slate-100 bg-blue-50">
+                          <p className="text-xs font-semibold text-blue-800 mb-1">📝 Ghi Chú:</p>
+                          <p className="text-sm text-blue-900">{draftOrder.notes}</p>
+                        </div>
+                      )}
+
+                      {/* Footer with Actions */}
+                      <div className="px-6 py-4 bg-slate-50 flex justify-between items-center">
+                        <div className="text-sm text-slate-600">
+                          💰 <span className="font-semibold">Cọc:</span> <span className="text-emerald-600 font-bold">{formatNumber(draftOrder.depositAmount)} đ</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditDraft(draftOrder)}
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md"
+                          >
+                            ✏️ Chỉnh Sửa
+                          </button>
+                          <button
+                            onClick={() => handleApproveDraft(draftOrder)}
+                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md"
+                          >
+                            ✅ Duyệt
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDraft(draftOrder.id)}
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md"
+                          >
+                            🗑️ Xóa
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Completed Orders Section */}
       <div className="pt-8">
@@ -538,6 +850,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
         order={viewingOrder}
         customer={viewingOrder ? customers.find(c => c.id === viewingOrder.customerId) : undefined}
         onClose={() => setViewingOrder(null)}
+        onMoveToDraft={handleMoveToDraft}
       />
 
       {showTelegramModal && (
@@ -556,6 +869,277 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
           isGenerating={isGeneratingEmail}
           onClose={() => { setGeneratedEmail(''); setIsGeneratingEmail(false); }}
         />
+      )}
+
+      {/* Edit Draft Modal */}
+      {editingDraft && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-2xl font-bold text-slate-800">Chỉnh Sửa Nháp Đơn #{editingDraft.id}</h3>
+              <button
+                onClick={handleCancelEditDraft}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Customer Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">👤 Khách Hàng</label>
+                <select
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">-- Chọn khách hàng --</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Order Date */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">📅 Ngày Tạo Đơn</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Production Days */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">⏳ Số Ngày Sản Xuất</label>
+                <input
+                  type="number"
+                  value={productionDays}
+                  onChange={(e) => setProductionDays(parseInt(e.target.value) || 14)}
+                  min="1"
+                  max="60"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Deadline */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">📌 Hạn Giao Hàng</label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Deposit Amount */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">💰 Tiền Cọc</label>
+                <input
+                  type="number"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(parseFloat(e.target.value) || 0)}
+                  min="0"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">📝 Ghi Chú</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ghi chú thêm..."
+                />
+              </div>
+
+              {/* Items */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">📦 Chi Tiết Sản Phẩm</label>
+                <div className="space-y-3">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                      {/* Image Preview and Upload */}
+                      <div className="mb-4 pb-4 border-b border-slate-300">
+                        <label className="block text-xs font-semibold text-slate-600 mb-2">📸 Ảnh Sản Phẩm</label>
+                        <div className="flex gap-4">
+                          {item.imageUrl && (
+                            <div className="relative w-24 h-24">
+                              <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-cover rounded-lg border border-slate-300" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newItems = [...items];
+                                  newItems[idx].imageUrl = '';
+                                  setItems(newItems);
+                                }}
+                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <label className="block w-full px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg text-sm text-slate-600 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mx-auto mb-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span>Chọn ảnh</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      const newItems = [...items];
+                                      newItems[idx].imageUrl = event.target?.result as string;
+                                      setItems(newItems);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Product Details Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Tên Sản Phẩm</label>
+                          <input
+                            type="text"
+                            value={item.productName}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].productName = e.target.value;
+                              setItems(newItems);
+                            }}
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Tên sản phẩm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Số Lượng</label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].quantity = parseInt(e.target.value) || 0;
+                              setItems(newItems);
+                            }}
+                            min="1"
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Số lượng"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Giá (đ)</label>
+                          <input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                              setItems(newItems);
+                            }}
+                            min="0"
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Giá"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Kích Thước</label>
+                          <input
+                            type="text"
+                            value={item.size}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].size = e.target.value;
+                              setItems(newItems);
+                            }}
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Kích thước"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Màu Sắc</label>
+                          <input
+                            type="text"
+                            value={item.color}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].color = e.target.value;
+                              setItems(newItems);
+                            }}
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Màu sắc"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                            className="w-full px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-semibold transition-colors"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setItems([...items, { productId: '', productName: '', quantity: 0, size: '', color: '', unitPrice: 0, imageUrl: '' }])}
+                  className="mt-3 w-full px-4 py-2 border border-dashed border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium transition-colors"
+                >
+                  + Thêm Sản Phẩm
+                </button>
+              </div>
+
+              {/* Total Summary */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-slate-600">
+                  <span className="font-semibold">Tổng Tiền:</span> {formatNumber(calculateTotal())} đ
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+              <button
+                onClick={handleCancelEditDraft}
+                className="px-6 py-2 bg-slate-300 hover:bg-slate-400 text-slate-800 rounded-lg font-medium transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEditedDraft}
+                disabled={isSaving}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                💾 Lưu Lại
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ImageLightbox

@@ -6,9 +6,10 @@ interface OrderDetailModalProps {
    order: Order | null;
    customer: Customer | undefined;
    onClose: () => void;
+   onMoveToDraft?: (order: Order) => void;
 }
 
-const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, onClose }) => {
+const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, onClose, onMoveToDraft }) => {
    if (!order) return null;
 
    const formatNumber = (num: number) => num.toLocaleString('vi-VN');
@@ -111,46 +112,46 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, on
                {/* 2. Product List */}
                <div>
                   <h4 className="text-lg font-bold text-slate-800 mb-3 border-l-4 border-blue-500 pl-3">Chi Tiết Sản Phẩm</h4>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-600 font-medium uppercase text-xs">
+                  <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                     <table className="w-full text-sm text-left whitespace-nowrap">
+                        <thead className="bg-slate-50 text-slate-600 font-medium uppercase text-xs sticky top-0">
                            <tr>
-                              <th className="px-4 py-3">STT</th>
-                              <th className="px-4 py-3">Ảnh</th>
-                              <th className="px-4 py-3">Mã Sản Phẩm</th>
-                              <th className="px-4 py-3">Tên Sản Phẩm</th>
-                              <th className="px-4 py-3">Size</th>
-                              <th className="px-4 py-3">Màu Sắc</th>
-                              <th className="px-4 py-3 text-right">Số Lượng</th>
-                              <th className="px-4 py-3 text-right">Đơn Giá</th>
-                              <th className="px-4 py-3 text-right">Thành Tiền</th>
+                              <th className="px-3 py-3 w-8">STT</th>
+                              <th className="px-3 py-3 w-12">Ảnh</th>
+                              <th className="px-3 py-3 w-20">Mã SP</th>
+                              <th className="px-3 py-3 min-w-32">Tên Sản Phẩm</th>
+                              <th className="px-3 py-3 w-16">Size</th>
+                              <th className="px-3 py-3 w-20">Màu Sắc</th>
+                              <th className="px-3 py-3 w-16 text-right">Số Lượng</th>
+                              <th className="px-3 py-3 w-20 text-right">Đơn Giá</th>
+                              <th className="px-3 py-3 w-20 text-right">Thành Tiền</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                            {order.items.map((item, idx) => (
                               <tr key={idx} className="hover:bg-slate-50">
-                                 <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
-                                 <td className="px-4 py-3">
+                                 <td className="px-3 py-3 text-slate-500 text-center">{idx + 1}</td>
+                                 <td className="px-3 py-3">
                                     {item.imageUrl ? (
                                        <img src={item.imageUrl} alt="Product" className="w-10 h-10 object-cover rounded border border-slate-200" />
                                     ) : (
-                                       <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-xs text-slate-400">No img</div>
+                                       <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-xs text-slate-400">-</div>
                                     )}
                                  </td>
-                                 <td className="px-4 py-3 font-bold text-blue-600 text-xs">{item.productId || '-'}</td>
-                                 <td className="px-4 py-3 font-medium text-slate-800">{item.productName}</td>
-                                 <td className="px-4 py-3 text-slate-600">{item.size}</td>
-                                 <td className="px-4 py-3 text-slate-600">{item.color || '-'}</td>
-                                 <td className="px-4 py-3 text-right font-medium">{formatNumber(item.quantity)}</td>
-                                 <td className="px-4 py-3 text-right text-slate-500">{formatNumber(item.unitPrice)}</td>
-                                 <td className="px-4 py-3 text-right font-bold text-slate-800">{formatNumber(item.quantity * item.unitPrice)}</td>
+                                 <td className="px-3 py-3 font-bold text-blue-600 text-xs">{item.productId || '-'}</td>
+                                 <td className="px-3 py-3 font-medium text-slate-800">{item.productName}</td>
+                                 <td className="px-3 py-3 text-slate-600 text-center">{item.size}</td>
+                                 <td className="px-3 py-3 text-slate-600 text-center">{item.color || '-'}</td>
+                                 <td className="px-3 py-3 text-right font-medium">{formatNumber(item.quantity)}</td>
+                                 <td className="px-3 py-3 text-right text-slate-500">{formatNumber(item.unitPrice)}</td>
+                                 <td className="px-3 py-3 text-right font-bold text-slate-800">{formatNumber(item.quantity * item.unitPrice)}</td>
                               </tr>
                            ))}
                         </tbody>
-                        <tfoot className="bg-slate-50">
+                        <tfoot className="bg-slate-50 sticky bottom-0">
                            <tr>
-                              <td colSpan={6} className="px-4 py-3 text-right font-bold text-slate-700 uppercase">Tổng cộng:</td>
-                              <td className="px-4 py-3 text-right font-bold text-blue-700 text-lg">{formatNumber(order.totalAmount)} đ</td>
+                              <td colSpan={6} className="px-3 py-3 text-right font-bold text-slate-700 uppercase">Tổng cộng:</td>
+                              <td colSpan={3} className="px-3 py-3 text-right font-bold text-blue-700 text-lg">{formatNumber(order.totalAmount)} đ</td>
                            </tr>
                         </tfoot>
                      </table>
@@ -249,7 +250,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, on
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+               {!order.isDraft && (
+                  <button
+                     onClick={() => onMoveToDraft?.(order)}
+                     className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                     💾 Quay lại Nháp
+                  </button>
+               )}
                <button
                   onClick={onClose}
                   className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors"

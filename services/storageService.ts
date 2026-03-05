@@ -94,7 +94,8 @@ export const getOrders = async (): Promise<Order[]> => {
     aiAnalysis: o.ai_analysis,
     actualDeliveryQuantity: o.actual_delivery_quantity || 0,
     deliveryHistory: o.delivery_history || [], // JSONB auto-parsed
-    statusReason: o.status_reason
+    statusReason: o.status_reason,
+    isDraft: o.is_draft || false
   }));
 };
 
@@ -112,7 +113,8 @@ export const saveOrder = async (order: Order): Promise<void> => {
     ai_analysis: order.aiAnalysis,
     actual_delivery_quantity: order.actualDeliveryQuantity,
     delivery_history: order.deliveryHistory || [],
-    status_reason: order.statusReason
+    status_reason: order.statusReason,
+    is_draft: order.isDraft || false
   };
 
   const { error } = await supabase

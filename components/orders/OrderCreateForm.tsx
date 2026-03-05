@@ -19,6 +19,7 @@ interface OrderCreateFormProps {
   setItems: (items: OrderItem[]) => void;
   onCancel: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  onSaveDraft: (e: React.FormEvent) => void;
   aiResult: { materialEstimate: string; advice: string } | null;
   isAnalyzing: boolean;
   onAnalyze: () => void;
@@ -42,12 +43,13 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
   setItems,
   onCancel,
   onSubmit,
+  onSaveDraft,
   aiResult,
   isAnalyzing,
   onAnalyze
 }) => {
   const productCategories = ['Áo', 'Quần', 'Giày', 'Túi', 'Mũ', 'Thắt lưng', 'Phụ kiện', 'Khác'];
-  
+
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
   // Helper to display DD-MM-YYYY
@@ -435,8 +437,15 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
               Hủy
             </button>
             <button
+              type="button"
+              onClick={onSaveDraft}
+              className="px-4 md:px-6 py-2 md:py-3 bg-amber-500 text-white font-semibold rounded-lg hover:bg-amber-600 transition-colors text-sm md:text-base order-3 sm:order-3"
+            >
+              💾 Lưu Nháp
+            </button>
+            <button
               type="submit"
-              className="px-4 md:px-8 py-2 md:py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 text-sm md:text-base order-3"
+              className="px-4 md:px-8 py-2 md:py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 text-sm md:text-base order-4 sm:order-4"
             >
               Tạo Đơn
             </button>

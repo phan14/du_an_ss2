@@ -46,6 +46,7 @@ export interface Order {
   createdAt: string;
   notes?: string;
   aiAnalysis?: string;
+  isDraft?: boolean; // Draft orders not shown in main list until approved
   
   // Tracking fields
   actualDeliveryQuantity?: number; // Keeps the total sum for easy display
