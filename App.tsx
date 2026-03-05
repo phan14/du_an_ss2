@@ -10,8 +10,9 @@ import Staff from './components/Staff';
 import System from './components/System';
 import Gluing from './components/Gluing';
 import Statistics from './components/Statistics';
+import Expenses from './components/Expenses';
 import BackupReminderModal from './components/common/BackupReminderModal';
-import { Customer, Order, ViewState, User } from './types';
+import { Customer, Order, ViewState, User, Expense } from './types';
 import { getCustomers, getOrders } from './services/storageService';
 import { getCurrentUser, logout } from './services/authService';
 import { isBackupDue } from './services/backupService';
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showBackupModal, setShowBackupModal] = useState(false);
 
@@ -80,7 +82,7 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case 'DASHBOARD':
-        return <Dashboard orders={orders} customers={customers} onNavigate={setCurrentView} />;
+        return <Dashboard orders={orders} customers={customers} expenses={expenses} onNavigate={setCurrentView} />;
       case 'CUSTOMERS':
         return (
           <Customers
@@ -137,6 +139,8 @@ const App: React.FC = () => {
         );
       case 'STATISTICS':
         return <Statistics customers={customers} orders={orders} />;
+      case 'EXPENSES':
+        return <Expenses onLoadExpenses={setExpenses} />;
       default:
         return <Dashboard orders={orders} customers={customers} onNavigate={setCurrentView} />;
     }

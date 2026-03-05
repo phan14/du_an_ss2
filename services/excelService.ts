@@ -98,6 +98,50 @@ export const exportGluingToExcel = (records: GluingRecord[], fileName: string = 
   XLSX.writeFile(workbook, fileName);
 };
 
+export const exportExpensesToExcel = (expenses: any[], fileName: string = 'danh_sach_chi_phi.xlsx') => {
+  // 1. Prepare data
+  const data = expenses.map(exp => {
+    return {
+      'Ngày Chi': formatDateForExcel(exp.date),
+      'Tên Chi Phí': exp.name,
+      'Loại': exp.category,
+      'Số Tiền': exp.amount,
+      'Ghi Chú': exp.notes || '',
+      'Ngày Tạo': formatDateForExcel(exp.createdAt)
+    };
+  });
+
+  // Add summary row
+  const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  data.push({
+    'Ngày Chi': '',
+    'Tên Chi Phí': 'TỔNG CỘNG',
+    'Loại': '',
+    'Số Tiền': totalAmount,
+    'Ghi Chú': '',
+    'Ngày Tạo': ''
+  });
+
+  // 2. Create worksheet
+  const worksheet = XLSX.utils.json_to_sheet(data);
+
+  // 3. Set column widths
+  const wscols = [
+    { wch: 12 }, // Ngày Chi
+    { wch: 30 }, // Tên Chi Phí
+    { wch: 15 }, // Loại
+    { wch: 15 }, // Số Tiền
+    { wch: 30 }, // Ghi Chú
+    { wch: 12 }  // Ngày Tạo
+  ];
+  worksheet['!cols'] = wscols;
+
+  // 4. Create workbook and download
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'ChiPhi');
+  XLSX.writeFile(workbook, fileName);
+};
+
 export const exportCustomerStatsToExcel = (
   customerName: string, 
   stats: { [timeKey: string]: { [productName: string]: { quantity: number; revenue: number; orderCount: number } } },

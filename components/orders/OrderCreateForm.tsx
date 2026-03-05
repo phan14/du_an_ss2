@@ -50,6 +50,9 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
 }) => {
   const productCategories = ['Áo', 'Quần', 'Giày', 'Túi', 'Mũ', 'Thắt lưng', 'Phụ kiện', 'Khác'];
 
+  // State to track display values for unitPrice formatting
+  const [unitPriceDisplay, setUnitPriceDisplay] = React.useState<Record<number, string>>({});
+
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
   // Helper to display DD-MM-YYYY
@@ -63,6 +66,19 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
   // Helper to parse "1.000.000" -> 1000000
   const parseNumberInput = (value: string) => {
     return parseInt(value.replace(/\./g, '').replace(/\D/g, '')) || 0;
+  };
+
+  // Handler for unitPrice input with thousand-separator formatting
+  const handleUnitPriceChange = (index: number, value: string) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue === '') {
+      updateItem(index, 'unitPrice', 0);
+      setUnitPriceDisplay({ ...unitPriceDisplay, [index]: '' });
+    } else {
+      const num = parseInt(numericValue, 10);
+      updateItem(index, 'unitPrice', num);
+      setUnitPriceDisplay({ ...unitPriceDisplay, [index]: num.toLocaleString('vi-VN') });
+    }
   };
 
   const updateItem = (index: number, field: keyof OrderItem, value: any) => {
@@ -80,6 +96,19 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
 
     setItems(newItems);
   };
+
+  // Clean up display state when items are removed
+  React.useEffect(() => {
+    // Remove display state for indices that no longer exist
+    const newDisplay = { ...unitPriceDisplay };
+    Object.keys(newDisplay).forEach(key => {
+      const index = parseInt(key, 10);
+      if (index >= items.length) {
+        delete newDisplay[index];
+      }
+    });
+    setUnitPriceDisplay(newDisplay);
+  }, [items.length]);
 
   const addItem = () => {
     // Generate productId from customer name + product name (initially empty, will be updated when product name is entered)
@@ -333,8 +362,8 @@ const OrderCreateForm: React.FC<OrderCreateFormProps> = ({
                         <input
                           type="text"
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm font-medium"
-                          value={item.unitPrice === 0 ? '' : formatNumber(item.unitPrice)}
-                          onChange={(e) => updateItem(idx, 'unitPrice', parseNumberInput(e.target.value))}
+                          value={unitPriceDisplay[idx] !== undefined ? unitPriceDisplay[idx] : (item.unitPrice === 0 ? '' : formatNumber(item.unitPrice))}
+                          onChange={(e) => handleUnitPriceChange(idx, e.target.value)}
                           placeholder="0"
                         />
                       </div>

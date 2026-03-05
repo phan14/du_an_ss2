@@ -79,7 +79,17 @@ export interface Product {
   imageUrl?: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'ORDERS' | 'CREATE_ORDER' | 'GLUING' | 'STAFF' | 'SYSTEM' | 'STATISTICS' | 'PRODUCTS';
+export interface Expense {
+  id: string;
+  name: string;
+  amount: number;
+  category: string; // e.g., Nguyên liệu, Lương, Điện nước, Vận chuyển, Khác
+  date: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'ORDERS' | 'CREATE_ORDER' | 'GLUING' | 'STAFF' | 'SYSTEM' | 'STATISTICS' | 'PRODUCTS' | 'EXPENSES';
 
 // --- AUTH TYPES ---
 export type UserRole = 'ADMIN' | 'STAFF';

@@ -77,6 +77,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
   const [showDraftOrders, setShowDraftOrders] = useState(false);
   const [editingDraft, setEditingDraft] = useState<Order | null>(null);
+  const [draftUnitPriceDisplay, setDraftUnitPriceDisplay] = useState<Record<number, string>>({});
 
   // Refs to track alerts (prevent duplicate notifications)
   const alertedOrderIdsRef = useRef(new Set<string>());
@@ -469,6 +470,24 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
     setOrderDate(createdDate.toISOString().split('T')[0]);
     const prodDays = Math.ceil((new Date(draftOrder.deadline).getTime() - new Date(draftOrder.createdAt).getTime()) / (1000 * 60 * 60 * 24));
     setProductionDays(prodDays);
+    setDraftUnitPriceDisplay({});
+  };
+
+  // Handler for unitPrice input with thousand-separator formatting in draft edit
+  const handleDraftUnitPriceChange = (index: number, value: string) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue === '') {
+      const newItems = [...items];
+      newItems[index].unitPrice = 0;
+      setItems(newItems);
+      setDraftUnitPriceDisplay({ ...draftUnitPriceDisplay, [index]: '' });
+    } else {
+      const num = parseInt(numericValue, 10);
+      const newItems = [...items];
+      newItems[index].unitPrice = num;
+      setItems(newItems);
+      setDraftUnitPriceDisplay({ ...draftUnitPriceDisplay, [index]: num.toLocaleString('vi-VN') });
+    }
   };
 
   const handleSaveEditedDraft = async (e: React.FormEvent) => {
@@ -505,6 +524,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
       setOrderDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setDepositAmount(0);
+      setDraftUnitPriceDisplay({});
     } catch (err) {
       alert('Có lỗi khi cập nhật nháp đơn hàng');
     } finally {
@@ -521,6 +541,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
     setOrderDate(new Date().toISOString().split('T')[0]);
     setNotes('');
     setDepositAmount(0);
+    setDraftUnitPriceDisplay({});
   };
 
   // Excel Handlers
@@ -1052,14 +1073,9 @@ const Orders: React.FC<OrdersProps> = ({ orders, customers, refreshData, initial
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 mb-1">Giá (đ)</label>
                           <input
-                            type="number"
-                            value={item.unitPrice}
-                            onChange={(e) => {
-                              const newItems = [...items];
-                              newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
-                              setItems(newItems);
-                            }}
-                            min="0"
+                            type="text"
+                            value={draftUnitPriceDisplay[idx] !== undefined ? draftUnitPriceDisplay[idx] : (item.unitPrice === 0 ? '' : formatNumber(item.unitPrice))}
+                            onChange={(e) => handleDraftUnitPriceChange(idx, e.target.value)}
                             className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Giá"
                           />

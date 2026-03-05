@@ -208,3 +208,67 @@ export const deleteGluingRecord = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+// 4. EXPENSES
+export const getExpenses = async (): Promise<any[]> => {
+  const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+  if (error) {
+    console.error('Error fetching expenses:', error.message);
+    return [];
+  }
+  
+  return data.map((e: any) => ({
+    id: e.id,
+    name: e.name,
+    amount: e.amount || 0,
+    category: e.category,
+    date: e.date,
+    notes: e.notes,
+    createdAt: e.created_at
+  }));
+};
+
+export const saveExpense = async (expense: any): Promise<void> => {
+  const dbExpense = {
+    id: expense.id,
+    name: expense.name,
+    amount: expense.amount,
+    category: expense.category,
+    date: expense.date,
+    notes: expense.notes,
+    created_at: expense.createdAt
+  };
+
+  const { error } = await supabase.from('expenses').upsert(dbExpense, { onConflict: 'id' });
+  if (error) {
+    console.error("Error saving expense:", error.message);
+    throw error;
+  }
+};
+
+export const saveExpensesBulk = async (newExpenses: any[]): Promise<void> => {
+  if (newExpenses.length === 0) return;
+  const dbExpenses = newExpenses.map(e => ({
+    id: e.id,
+    name: e.name,
+    amount: e.amount,
+    category: e.category,
+    date: e.date,
+    notes: e.notes,
+    created_at: e.createdAt
+  }));
+
+  const { error } = await supabase.from('expenses').upsert(dbExpenses, { onConflict: 'id' });
+  if (error) {
+    console.error("Error saving expenses bulk:", error.message);
+    throw error;
+  }
+};
+
+export const deleteExpense = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  if (error) {
+    console.error("Error deleting expense:", error.message);
+    throw error;
+  }
+};

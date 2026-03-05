@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Order, OrderStatus, Customer } from '../types';
+import { Order, OrderStatus, Customer, Expense } from '../types';
 import StatCard from './dashboard/StatCard';
 import StatusChart from './dashboard/StatusChart';
 import RevenueChart from './dashboard/RevenueChart';
@@ -10,9 +10,10 @@ interface DashboardProps {
   orders: Order[];
   onNavigate: (view: any) => void;
   customers?: Customer[];
+  expenses?: Expense[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [] }) => {
+const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [], expenses = [] }) => {
 
   // --- CALCULATIONS ---
   const stats = useMemo(() => {
@@ -29,6 +30,9 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [
     }, 0);
     const totalCollected = deposit + deliveryPayments;
     const remaining = revenue - totalCollected;
+
+    // Expenses
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
     // Production Progress
     const totalItemsOrdered = orders.reduce((sum, o) => sum + o.items.reduce((iSum, i) => iSum + i.quantity, 0), 0);
@@ -64,11 +68,12 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [
       pendingOrders,
       revenue,
       remaining,
+      totalExpenses,
       productionRate,
       urgentList,
       chartData
     };
-  }, [orders]);
+  }, [orders, expenses]);
 
   // Chart Data for Pie
   const statusData = [
@@ -105,15 +110,14 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onNavigate, customers = [
           colorClass="bg-amber-50"
         />
         <StatCard
-          title="Tiến Độ Sản Xuất"
-          value={`${stats.productionRate.toFixed(1)}%`}
+          title="Tổng Tiền Chi"
+          value={`${Math.round(stats.totalExpenses).toLocaleString('vi-VN')} đ`}
           icon={
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           }
-          trend="+5%" trendUp={true}
-          colorClass="bg-blue-50"
+          colorClass="bg-red-50"
         />
         <StatCard
           title="Đơn Chờ Xử Lý"
