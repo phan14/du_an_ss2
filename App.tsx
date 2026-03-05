@@ -126,7 +126,7 @@ const App: React.FC = () => {
         return <Staff currentUser={currentUser} />;
       case 'SYSTEM':
         return (
-          <System 
+          <System
             currentUser={currentUser}
             orders={orders}
             customers={customers}
