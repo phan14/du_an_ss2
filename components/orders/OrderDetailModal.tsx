@@ -38,8 +38,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, customer, on
                   <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                      Đơn Hàng #{order.id}
                      <span className={`text-sm px-3 py-1 rounded-full border ${order.status === 'Hoàn thành' ? 'bg-green-100 text-green-700 border-green-200' :
-                           order.status === 'Đã hủy' ? 'bg-red-100 text-red-700 border-red-200' :
-                              'bg-blue-100 text-blue-700 border-blue-200'
+                        order.status === 'Đã hủy' ? 'bg-red-100 text-red-700 border-red-200' :
+                           'bg-blue-100 text-blue-700 border-blue-200'
                         }`}>
                         {order.status}
                      </span>
